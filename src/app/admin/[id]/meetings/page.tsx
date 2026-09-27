@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
-import { createMeeting } from "./actions";
+import { createMeetings } from "./actions";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,12 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
     .eq("id", params.id)
     .single();
 
+  const { data: rules } = await supabase
+    .from("roster_rules")
+    .select("match_board_count")
+    .eq("competition_id", params.id)
+    .maybeSingle<{ match_board_count: number | null }>();
+
   const { data: meetings } = await supabase
     .from("meetings")
     .select("id, meeting_number, board_count")
@@ -26,15 +32,12 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
     .select("id, meeting_id, board_number, token");
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const boundCreate = createMeetings.bind(null, params.id);
 
-  const boundCreate = createMeeting.bind(null, params.id);
-
-  // Server-side QR image generation (data URLs) — δεν χρειάζεται καμία
-  // client-side βιβλιοθήκη, το <img> απλά δείχνει το data: URI.
   const qrByMeeting = new Map<string, { board_number: number; dataUrl: string }[]>();
   for (const t of allTokens ?? []) {
     const url = `${siteUrl}/r/${t.token}`;
-    const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 160 });
+    const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 200 });
     const list = qrByMeeting.get(t.meeting_id) ?? [];
     list.push({ board_number: t.board_number, dataUrl });
     qrByMeeting.set(t.meeting_id, list);
@@ -48,63 +51,74 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
         </Link>
         <h1 className="font-serif font-bold text-2xl mt-2">Συναντήσεις &amp; QR</h1>
         <p className="text-xs text-muted mt-1">
-          Μόνιμα QR ανά (Συνάντηση, Σκακιέρα) — δημιουργούνται μία φορά, τυπώνονται μία
-          φορά. Η αντιστοίχιση ομάδων σε Συνάντηση γίνεται ανά γύρο, στη σελίδα Γύροι.
+          Μόνιμα QR ανά (Συνάντηση, Σκακιέρα) — δημιουργούνται μία φορά, τυπώνονται μία φορά. Η
+          αντιστοίχιση ομάδων σε Συνάντηση γίνεται ανά γύρο, στη σελίδα Γύροι.
         </p>
+        {rules?.match_board_count ? (
+          <p className="text-xs text-gold mt-1">
+            Σκακιέρες ανά αγώνα (από τους Κανόνες Σύνθεσης): {rules.match_board_count}
+          </p>
+        ) : (
+          <p className="text-xs text-red-400 mt-1">
+            Δεν έχεις ορίσει ακόμα &quot;Σκακιέρες ανά αγώνα&quot; στους Κανόνες Σύνθεσης — χρειάζεται
+            πρώτα εκεί πριν δημιουργήσεις συναντήσεις.
+          </p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         {(meetings ?? []).map((m) => (
           <div key={m.id} className="bg-card border border-cardBorder rounded-xl p-4">
             <div className="font-semibold mb-3">
               Συνάντηση {m.meeting_number} · {m.board_count} σκακιέρες
             </div>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-6">
               {(qrByMeeting.get(m.id) ?? [])
                 .sort((a, b) => a.board_number - b.board_number)
                 .map((q) => (
-                  <div key={q.board_number} className="flex flex-col items-center gap-1">
+                  <div
+                    key={q.board_number}
+                    className="flex flex-col items-center gap-1 border border-cardBorder rounded-lg p-3"
+                  >
+                    <div className="font-serif font-bold text-lg leading-tight">
+                      Συνάντηση {m.meeting_number}
+                    </div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={q.dataUrl} alt={`QR Συνάντηση ${m.meeting_number} Σκακιέρα ${q.board_number}`} width={120} height={120} />
-                    <div className="text-xs text-muted">Σκακιέρα {q.board_number}</div>
+                    <img
+                      src={q.dataUrl}
+                      alt={`QR Συνάντηση ${m.meeting_number} Σκακιέρα ${q.board_number}`}
+                      width={160}
+                      height={160}
+                    />
+                    <div className="font-serif font-bold text-lg leading-tight">
+                      Σκακιέρα {q.board_number}
+                    </div>
                   </div>
                 ))}
             </div>
           </div>
         ))}
-        {(meetings ?? []).length === 0 && (
-          <p className="text-sm text-muted">Καμία συνάντηση ακόμα.</p>
-        )}
+        {(meetings ?? []).length === 0 && <p className="text-sm text-muted">Καμία συνάντηση ακόμα.</p>}
       </div>
 
-      <form action={boundCreate} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
-        <div className="text-xs uppercase tracking-wide text-muted">Νέα Συνάντηση</div>
-        <div className="flex gap-3">
-          <label className="flex flex-col gap-1 text-sm flex-1">
-            Αριθμός Συνάντησης
+      {rules?.match_board_count && (
+        <form action={boundCreate} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+          <div className="text-xs uppercase tracking-wide text-muted">Δημιουργία Συναντήσεων</div>
+          <label className="flex flex-col gap-1 text-sm">
+            Πόσες συναντήσεις θέλεις να προσθέσεις;
             <input
-              name="meeting_number"
+              name="count"
               type="number"
               required
-              placeholder="π.χ. 1"
+              placeholder="π.χ. 5"
               className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm flex-1">
-            Αριθμός Σκακιερών
-            <input
-              name="board_count"
-              type="number"
-              required
-              placeholder="π.χ. 4"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
-            />
-          </label>
-        </div>
-        <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
-          Δημιουργία Συνάντησης + QR
-        </button>
-      </form>
+          <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
+            Δημιουργία + QR
+          </button>
+        </form>
+      )}
     </div>
   );
 }

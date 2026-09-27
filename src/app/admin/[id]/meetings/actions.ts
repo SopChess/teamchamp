@@ -5,45 +5,65 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Δημιουργεί ένα meeting (σταθερή φυσική θέση, π.χ. "Συνάντηση 3") και
- * ΑΜΕΣΩΣ όλα τα qr_tokens του (ένα ανά board 1..board_count) — τα QR είναι
- * μόνιμα, τυπώνονται μία φορά, δεν ξαναδημιουργούνται ποτέ ανά γύρο
- * (επιβεβαιωμένο 2026-09-27, §4/§6 του document).
+ * Δημιουργεί ΠΟΛΛΕΣ συναντήσεις μαζί (π.χ. "θέλω QR για 5 συναντήσεις") —
+ * επιβεβαιωμένο 2026-09-27. Ο αριθμός σκακιερών ανά συνάντηση ΔΕΝ ξαναρωτιέται
+ * εδώ — έρχεται αυτόματα από το match_board_count των Κανόνων Σύνθεσης της
+ * διοργάνωσης. Κάθε συνάντηση παίρνει αμέσως τα δικά της μόνιμα QR (ένα ανά
+ * σκακιέρα), που δεν ξαναδημιουργούνται ποτέ.
  */
-export async function createMeeting(competitionId: string, formData: FormData) {
+export async function createMeetings(competitionId: string, formData: FormData) {
   const supabase = createClient();
 
-  const meetingNumber = Number(formData.get("meeting_number"));
-  const boardCount = Number(formData.get("board_count"));
-
-  if (!meetingNumber || !boardCount) {
-    throw new Error("Αριθμός συνάντησης και αριθμός σκακιερών είναι υποχρεωτικά.");
+  const count = Number(formData.get("count"));
+  if (!count || count < 1) {
+    throw new Error("Ο αριθμός συναντήσεων είναι υποχρεωτικός.");
   }
 
-  const { data: meeting, error } = await supabase
+  const { data: rules } = await supabase
+    .from("roster_rules")
+    .select("match_board_count")
+    .eq("competition_id", competitionId)
+    .maybeSingle<{ match_board_count: number | null }>();
+
+  if (!rules?.match_board_count) {
+    throw new Error(
+      'Πρώτα όρισε "Σκακιέρες ανά αγώνα" στους Κανόνες Σύνθεσης της διοργάνωσης.'
+    );
+  }
+  const boardCount = rules.match_board_count;
+
+  const { data: existing } = await supabase
     .from("meetings")
-    .insert({
-      competition_id: competitionId,
-      meeting_number: meetingNumber,
-      board_count: boardCount,
-    })
-    .select("id")
-    .single();
+    .select("meeting_number")
+    .eq("competition_id", competitionId)
+    .order("meeting_number", { ascending: false })
+    .limit(1);
 
-  if (error) {
-    throw new Error(`Αποτυχία δημιουργίας συνάντησης: ${error.message}`);
-  }
+  const startFrom = (existing?.[0]?.meeting_number ?? 0) + 1;
 
-  const tokens = Array.from({ length: boardCount }, (_, i) => ({
-    meeting_id: meeting.id,
-    board_number: i + 1,
-    token: randomBytes(12).toString("hex"),
-  }));
+  for (let i = 0; i < count; i++) {
+    const meetingNumber = startFrom + i;
 
-  const { error: tokensError } = await supabase.from("qr_tokens").insert(tokens);
+    const { data: meeting, error } = await supabase
+      .from("meetings")
+      .insert({ competition_id: competitionId, meeting_number: meetingNumber, board_count: boardCount })
+      .select("id")
+      .single();
 
-  if (tokensError) {
-    throw new Error(`Η συνάντηση δημιουργήθηκε αλλά τα QR απέτυχαν: ${tokensError.message}`);
+    if (error) {
+      throw new Error(`Αποτυχία δημιουργίας Συνάντησης ${meetingNumber}: ${error.message}`);
+    }
+
+    const tokens = Array.from({ length: boardCount }, (_, b) => ({
+      meeting_id: meeting.id,
+      board_number: b + 1,
+      token: randomBytes(12).toString("hex"),
+    }));
+
+    const { error: tokensError } = await supabase.from("qr_tokens").insert(tokens);
+    if (tokensError) {
+      throw new Error(`Συνάντηση ${meetingNumber} δημιουργήθηκε αλλά τα QR απέτυχαν: ${tokensError.message}`);
+    }
   }
 
   revalidatePath(`/admin/${competitionId}/meetings`);
