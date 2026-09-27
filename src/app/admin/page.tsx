@@ -18,7 +18,12 @@ export default async function AdminHome() {
         <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">
           TEAM ALMA
         </div>
-        <h1 className="font-serif font-bold text-2xl">Διοργανώσεις</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-serif font-bold text-2xl">Διοργανώσεις</h1>
+          <Link href="/admin/clubs" className="text-xs text-gold underline">
+            Σύλλογοι/Σχολεία →
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">

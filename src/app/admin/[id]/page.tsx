@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { saveRosterRules } from "../actions";
 import type { RosterRules } from "@/lib/rosterRules/types";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -27,6 +28,14 @@ export default async function CompetitionPage({ params }: { params: { id: string
       <div>
         <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
         <h1 className="font-serif font-bold text-2xl">{competition?.name ?? "Διοργάνωση"}</h1>
+        <div className="flex gap-4 mt-2">
+          <Link href={`/admin/${params.id}/teams`} className="text-xs text-gold underline">
+            Ομάδες →
+          </Link>
+          <Link href="/admin/clubs" className="text-xs text-gold underline">
+            Σύλλογοι/Σχολεία →
+          </Link>
+        </div>
       </div>
 
       <form action={boundSave} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
@@ -46,7 +55,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
         <div className="flex gap-3">
           <label className="flex flex-col gap-1 text-sm flex-1">
-            Μέγεθος ρόστερ
+            Αριθμός αθλητών Βασικής Σύνθεσης
             <input
               name="roster_size"
               type="number"

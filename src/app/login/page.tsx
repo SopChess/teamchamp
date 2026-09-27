@@ -1,30 +1,53 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
   const params = useSearchParams();
-  const errorParam = params.get("error");
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(errorParam);
+  const router = useRouter();
+  const next = params.get("next") ?? "/admin";
 
-  async function handleSubmit(e: React.FormEvent) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function requestCode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    // Χωρίς emailRedirectTo: το Supabase στέλνει τον κωδικό {{ .Token }} στο
+    // email, όχι (μόνο) ένα κλικ-λινκ. Ένα πληκτρολογημένο 6ψήφιο δεν μπορεί
+    // να "καταναλωθεί" από αυτόματο prefetch email scanner (π.χ. Gmail) —
+    // ακριβώς το πρόβλημα που είχαμε με το κλικ-λινκ.
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    setLoading(false);
     if (error) {
       setError(error.message);
     } else {
-      setSent(true);
+      setStep("code");
+    }
+  }
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "email",
+    });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      router.push(next);
     }
   }
 
@@ -37,12 +60,8 @@ function LoginForm() {
           </span>
         </div>
 
-        {sent ? (
-          <p className="text-sm text-muted">
-            Στείλαμε link σύνδεσης στο {email}. Έλεγξε το email σου.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {step === "email" && (
+          <form onSubmit={requestCode} className="flex flex-col gap-3">
             <input
               type="email"
               required
@@ -53,9 +72,42 @@ function LoginForm() {
             />
             <button
               type="submit"
-              className="bg-gold text-bg font-semibold rounded-xl py-3 text-sm"
+              disabled={loading}
+              className="bg-gold text-bg font-semibold rounded-xl py-3 text-sm disabled:opacity-60"
             >
-              Αποστολή link σύνδεσης
+              {loading ? "Αποστολή..." : "Αποστολή κωδικού σύνδεσης"}
+            </button>
+          </form>
+        )}
+
+        {step === "code" && (
+          <form onSubmit={verifyCode} className="flex flex-col gap-3">
+            <p className="text-sm text-muted">
+              Στείλαμε 6ψήφιο κωδικό στο {email}. Γράψ&#39; τον εδώ (όχι κλικ σε
+              link μέσα στο email).
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              required
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="bg-panel border border-cardBorder rounded-xl px-4 py-3 text-sm tracking-widest text-center"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-gold text-bg font-semibold rounded-xl py-3 text-sm disabled:opacity-60"
+            >
+              {loading ? "Έλεγχος..." : "Σύνδεση"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("email")}
+              className="text-xs text-muted underline"
+            >
+              Άλλο email
             </button>
           </form>
         )}
