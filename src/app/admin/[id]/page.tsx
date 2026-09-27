@@ -28,9 +28,15 @@ export default async function CompetitionPage({ params }: { params: { id: string
       <div>
         <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
         <h1 className="font-serif font-bold text-2xl">{competition?.name ?? "Διοργάνωση"}</h1>
-        <div className="flex gap-4 mt-2">
+        <div className="flex gap-4 mt-2 flex-wrap">
           <Link href={`/admin/${params.id}/teams`} className="text-xs text-gold underline">
             Ομάδες →
+          </Link>
+          <Link href={`/admin/${params.id}/meetings`} className="text-xs text-gold underline">
+            Συναντήσεις &amp; QR →
+          </Link>
+          <Link href={`/admin/${params.id}/rounds`} className="text-xs text-gold underline">
+            Γύροι &amp; Αντιστοίχιση →
           </Link>
           <Link href="/admin/clubs" className="text-xs text-gold underline">
             Σύλλογοι/Σχολεία →
