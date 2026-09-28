@@ -20,9 +20,14 @@ export default async function AdminHome() {
         </div>
         <div className="flex items-center justify-between">
           <h1 className="font-serif font-bold text-2xl">Διοργανώσεις</h1>
-          <Link href="/admin/clubs" className="text-xs text-gold underline">
-            Σύλλογοι/Σχολεία →
-          </Link>
+          <div className="flex gap-4">
+            <Link href="/admin/users" className="text-xs text-gold underline">
+              Χρήστες &amp; Πρόσβαση →
+            </Link>
+            <Link href="/admin/clubs" className="text-xs text-gold underline">
+              Σύλλογοι/Σχολεία →
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -69,6 +74,11 @@ export default async function AdminHome() {
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm w-24"
           />
         </div>
+        <input
+          name="venue"
+          placeholder="Χώρος αγώνων"
+          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+        />
         <div className="flex gap-3">
           <input name="starts_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
           <input name="ends_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />

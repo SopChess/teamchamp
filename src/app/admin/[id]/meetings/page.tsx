@@ -60,7 +60,7 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
           </p>
         ) : (
           <p className="text-xs text-red-400 mt-1">
-            Δεν έχεις ορίσει ακόμα &quot;Σκακιέρες ανά αγώνα&quot; στους Κανόνες Σύνθεσης — χρειάζεται
+            Δεν έχετε ορίσει ακόμα &quot;Σκακιέρες ανά αγώνα&quot; στους Κανόνες Σύνθεσης — χρειάζεται
             πρώτα εκεί πριν δημιουργήσεις συναντήσεις.
           </p>
         )}
@@ -105,7 +105,7 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
         <form action={boundCreate} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
           <div className="text-xs uppercase tracking-wide text-muted">Δημιουργία Συναντήσεων</div>
           <label className="flex flex-col gap-1 text-sm">
-            Πόσες συναντήσεις θέλεις να προσθέσεις;
+            Πόσες συναντήσεις θέλετε να προσθέσετε;
             <input
               name="count"
               type="number"

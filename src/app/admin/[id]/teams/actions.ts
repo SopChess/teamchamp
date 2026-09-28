@@ -11,7 +11,7 @@ export async function createTeam(competitionId: string, formData: FormData) {
   const rosterLockDeadline = String(formData.get("roster_lock_deadline") ?? "") || null;
 
   if (!clubOrSchoolId) {
-    throw new Error("Επίλεξε σύλλογο/σχολείο.");
+    throw new Error("Επιλέξτε σύλλογο/σχολείο.");
   }
 
   const captainAccessToken = randomBytes(16).toString("hex");

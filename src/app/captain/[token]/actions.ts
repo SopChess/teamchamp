@@ -198,7 +198,7 @@ export async function confirmRoster(token: string) {
     .eq("team_id", team.id);
 
   if (!count) {
-    throw new Error("Πρόσθεσε τουλάχιστον έναν αθλητή πριν την επιβεβαίωση.");
+    throw new Error("Προσθέστε τουλάχιστον έναν αθλητή πριν την επιβεβαίωση.");
   }
 
   const { error } = await supabase

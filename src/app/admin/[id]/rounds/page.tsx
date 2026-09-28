@@ -70,7 +70,7 @@ export default async function RoundsPage({ params }: { params: { id: string } })
         </Link>
         <h1 className="font-serif font-bold text-2xl mt-2">Γύροι &amp; Κλήρωση</h1>
         <p className="text-xs text-muted mt-1">
-          Ανέβασε το αρχείο κλήρωσης (.xls/.xlsx) όπως το εξάγει το Swiss-Manager, ανά γύρο.
+          Ανεβάστε το αρχείο κλήρωσης (.xls/.xlsx) όπως το εξάγει το Swiss-Manager, ανά γύρο.
           Ο γύρος και η αντιστοίχιση ομάδων σε Συναντήσεις δημιουργούνται αυτόματα.
         </p>
       </div>

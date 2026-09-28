@@ -13,6 +13,7 @@ export async function createCompetition(formData: FormData) {
   const roundsCount = Number(formData.get("rounds_count") ?? 0) || null;
   const startsOn = String(formData.get("starts_on") ?? "") || null;
   const endsOn = String(formData.get("ends_on") ?? "") || null;
+  const venue = String(formData.get("venue") ?? "").trim() || null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -26,6 +27,7 @@ export async function createCompetition(formData: FormData) {
       rounds_count: roundsCount,
       starts_on: startsOn,
       ends_on: endsOn,
+      venue,
     })
     .select("id")
     .single();
@@ -52,7 +54,7 @@ export async function saveRosterRules(competitionId: string, formData: FormData)
   try {
     boardRules = JSON.parse(boardRulesJson);
   } catch {
-    throw new Error("Το board_rules JSON δεν είναι έγκυρο. Έλεγξε τη σύνταξη.");
+    throw new Error("Το board_rules JSON δεν είναι έγκυρο. Ελέγξτε τη σύνταξη.");
   }
 
   const payload: Partial<RosterRules> & { competition_id: string } = {

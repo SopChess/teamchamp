@@ -79,7 +79,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
           required
           className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">— Επίλεξε σύλλογο/σχολείο —</option>
+          <option value="">— Επιλέξτε σύλλογο/σχολείο —</option>
           {(clubs ?? []).map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

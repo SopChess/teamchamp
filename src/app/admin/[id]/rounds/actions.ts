@@ -75,7 +75,7 @@ async function commitPairings(
 export async function uploadPairingsFile(competitionId: string, formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    throw new Error("Επίλεξε το αρχείο κλήρωσης (.xls/.xlsx) του Swiss-Manager.");
+    throw new Error("Επιλέξτε το αρχείο κλήρωσης (.xls/.xlsx) του Swiss-Manager.");
   }
 
   const buffer = await file.arrayBuffer();
@@ -112,7 +112,7 @@ export async function uploadPairingsFile(competitionId: string, formData: FormDa
   );
   if (missingMeetings.length > 0) {
     throw new Error(
-      `Το αρχείο αναφέρεται σε Συναντήσεις που δεν έχουν δημιουργηθεί ακόμα: ${missingMeetings.join(", ")}. Φτιάξε πρώτα αρκετές Συναντήσεις στη σελίδα "Συναντήσεις & QR".`
+      `Το αρχείο αναφέρεται σε Συναντήσεις που δεν έχουν δημιουργηθεί ακόμα: ${missingMeetings.join(", ")}. Δημιουργήστε πρώτα αρκετές Συναντήσεις στη σελίδα "Συναντήσεις & QR".`
     );
   }
 

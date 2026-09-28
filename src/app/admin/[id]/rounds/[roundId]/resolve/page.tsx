@@ -68,7 +68,7 @@ export default async function ResolveMappingPage({
         <h1 className="font-serif font-bold text-2xl mt-2">Επίλυση Αντιστοιχίας</h1>
         <p className="text-xs text-muted mt-1">
           Αυτά τα ονόματα από το αρχείο Excel δεν ταιριάζουν αυτόματα με καμία δηλωμένη ομάδα.
-          Διάλεξε τη σωστή ομάδα για το καθένα — η αντιστοίχιση αποθηκεύεται μόνιμα και δεν θα
+          Επιλέξτε τη σωστή ομάδα για το καθένα — η αντιστοίχιση αποθηκεύεται μόνιμα και δεν θα
           ξαναρωτηθεί σε επόμενο γύρο αυτής της διοργάνωσης.
         </p>
       </div>
@@ -86,7 +86,7 @@ export default async function ResolveMappingPage({
                 required
                 className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
               >
-                <option value="">— Επίλεξε ομάδα —</option>
+                <option value="">— Επιλέξτε ομάδα —</option>
                 {(teams ?? []).map((t) => (
                   <option key={t.id} value={t.id}>
                     {clubName(t.clubs_schools as ClubRef)}

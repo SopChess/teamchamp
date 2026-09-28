@@ -27,7 +27,7 @@ export async function createMeetings(competitionId: string, formData: FormData) 
 
   if (!rules?.match_board_count) {
     throw new Error(
-      'Πρώτα όρισε "Σκακιέρες ανά αγώνα" στους Κανόνες Σύνθεσης της διοργάνωσης.'
+      'Ορίστε πρώτα τις "Σκακιέρες ανά αγώνα" στους Κανόνες Σύνθεσης της διοργάνωσης.'
     );
   }
   const boardCount = rules.match_board_count;
