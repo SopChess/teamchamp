@@ -148,43 +148,77 @@ export function validateComposition(
 }
 
 /**
- * Fallback assignment when a team misses the round submission window:
+ * Εφεδρική σύνθεση όταν μια ομάδα δεν καταθέτει μέσα στο παράθυρο:
  * "χρησιμοποιείται η βασική σύνθεση όπως δηλώθηκε" (επιβεβαιωμένο, §3).
- * Applies to BOTH assignment_modes.
+ * Ισχύει και για τα δύο assignment_mode.
+ *
+ * Σειρά κανόνων (ντετερμινιστική):
+ * 1. Αν ένας παίκτης έχει ρητό default_board, παίρνει αυτή τη σκακιέρα.
+ * 2. Σκακιέρες με δικό τους constraint (οι εξαιρεμένες από τη σειρά στο
+ *    strength_order, ΟΛΕΣ στο fixed_category): παίρνει τον πρώτο κατά
+ *    δηλωμένη σειρά ΕΠΙΛΕΞΙΜΟ παίκτη που δεν έχει ήδη χρησιμοποιηθεί
+ *    (χρειάζεται το `players` για να ελεγχθούν τα constraints).
+ * 3. Οι υπόλοιπες σκακιέρες του strength_order γεμίζουν με τη δηλωμένη σειρά.
  */
 export function computeDefaultAssignment(
   rules: RosterRules,
-  roster: RosterEntry[]
+  roster: RosterEntry[],
+  players?: Record<string, Player>
 ): BoardAssignment[] {
   const sorted = [...roster].sort((a, b) => a.declared_order - b.declared_order);
-  const assignments: BoardAssignment[] = [];
+  const assigned = new Map<number, string>();
+  const used = new Set<string>();
 
-  const explicit = sorted.filter((r) => r.default_board != null);
-  for (const r of explicit) {
-    assignments.push({ board: r.default_board as number, player_id: r.player_id });
-  }
+  const boards =
+    rules.assignment_mode === "fixed_category"
+      ? rules.board_rules.map((b) => b.board).sort((x, y) => x - y)
+      : Array.from({ length: rules.match_board_count ?? rules.board_rules.length }, (_, i) => i + 1);
 
-  if (rules.assignment_mode === "fixed_category") {
-    return assignments;
-  }
+  const ruleFor = (board: number) => rules.board_rules.find((b) => b.board === board);
 
-  const nonExemptBoards = rules.board_rules
-    .filter((b) => !b.exempt_from_order)
-    .map((b) => b.board)
-    .sort((a, b) => a - b);
-
-  const explicitIds = new Set(explicit.map((r) => r.player_id));
-  const candidates = sorted.filter((r) => !explicitIds.has(r.player_id));
-
-  let i = 0;
-  for (const board of nonExemptBoards) {
-    if (assignments.some((a) => a.board === board)) continue;
-    const candidate = candidates[i];
-    if (candidate) {
-      assignments.push({ board, player_id: candidate.player_id });
-      i++;
+  // 1. ρητά default_board
+  for (const r of sorted) {
+    if (r.default_board != null && boards.includes(r.default_board) && !assigned.has(r.default_board)) {
+      assigned.set(r.default_board, r.player_id);
+      used.add(r.player_id);
     }
   }
 
-  return assignments;
+  // 2. σκακιέρες με δικό τους constraint
+  const constrained =
+    rules.assignment_mode === "fixed_category"
+      ? boards
+      : boards.filter((b) => ruleFor(b)?.exempt_from_order);
+
+  for (const board of constrained) {
+    if (assigned.has(board)) continue;
+    const rule = ruleFor(board);
+    const pick = sorted.find(
+      (r) =>
+        !used.has(r.player_id) &&
+        (!players || !rule || !players[r.player_id] || satisfiesBoardRule(players[r.player_id], rule))
+    );
+    if (pick) {
+      assigned.set(board, pick.player_id);
+      used.add(pick.player_id);
+    }
+  }
+
+  // 3. οι υπόλοιπες σκακιέρες του strength_order με τη δηλωμένη σειρά
+  if (rules.assignment_mode === "strength_order") {
+    const remaining = sorted.filter((r) => !used.has(r.player_id));
+    let i = 0;
+    for (const board of boards) {
+      if (assigned.has(board) || ruleFor(board)?.exempt_from_order) continue;
+      const next = remaining[i++];
+      if (next) {
+        assigned.set(board, next.player_id);
+        used.add(next.player_id);
+      }
+    }
+  }
+
+  return [...assigned.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([board, player_id]) => ({ board, player_id }));
 }

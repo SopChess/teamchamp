@@ -18,18 +18,22 @@ const UUID_PATH = /^\/admin\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0
  * - tournament_admin: /admin (αρχική) και /admin/<δική του διοργάνωση>/...
  *   (ΟΧΙ /admin/clubs και ΟΧΙ άλλες διοργανώσεις — να αποφασιστεί αργότερα
  *   αν χρειάζεται πρόσβαση στους Συλλόγους)
- * - referee: μόνο /referee
+ * - referee: /referee και τη σάρωση QR (/r/...)
+ * - tournament_admin: επιπλέον τη σάρωση QR (/r/...)
  */
 export function isPathAllowed(access: Access, path: string): boolean {
   const inAdmin = path === "/admin" || path.startsWith("/admin/");
   const inReferee = path === "/referee" || path.startsWith("/referee/");
+  // Σελίδα σάρωσης QR: /r/<token>. Το scope ανά διοργάνωση ελέγχεται μέσα στη σελίδα.
+  const inScan = path === "/r" || path.startsWith("/r/");
 
   switch (access.role) {
     case "super_admin":
-      return inAdmin || inReferee;
+      return inAdmin || inReferee || inScan;
     case "referee":
-      return inReferee;
+      return inReferee || inScan;
     case "tournament_admin": {
+      if (inScan) return true;
       if (!inAdmin) return false;
       if (path === "/admin") return true;
       const match = path.match(UUID_PATH);

@@ -18,13 +18,26 @@ import {
  *    το token με το service key και το στέλνει με email.
  * 3. Το "sent" επιστρέφεται μόνο όταν το Resend επιβεβαίωσε την αποστολή.
  *
- * Γνωστός περιορισμός: δεν υπάρχει ακόμα περιορισμός συχνότητας αιτημάτων.
+ * Περιορισμός συχνότητας: μέγιστο 3 αιτήματα ανά email και 30 συνολικά ανά
+ * ώρα (συνάρτηση access_request_allowed της βάσης). Εφαρμόζεται σε ΟΛΑ τα
+ * αιτήματα, ώστε να μη γίνεται ούτε "σκανάρισμα" emails ούτε πλημμύρα
+ * μηνυμάτων σε καταχωρημένα μέλη.
  */
 export async function requestAccessLink(rawEmail: string): Promise<AccessRequestResult> {
   const email = normalizeEmail(rawEmail);
   if (!isValidEmail(email)) return { status: "invalid_email" };
 
   const supabase = createClient();
+
+  const { data: allowed, error: limitError } = await supabase.rpc("access_request_allowed", {
+    p_email: email,
+  });
+  if (limitError) {
+    console.error("access_request_allowed error:", limitError.message);
+    return { status: "send_failed" };
+  }
+  if (!allowed) return { status: "rate_limited" };
+
   const { data: exists, error } = await supabase.rpc("access_email_exists", { p_email: email });
   if (error) {
     console.error("access_email_exists error:", error.message);

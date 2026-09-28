@@ -3,7 +3,8 @@ export type AccessRequestStatus =
   | "not_member"
   | "sending_disabled"
   | "send_failed"
-  | "invalid_email";
+  | "invalid_email"
+  | "rate_limited";
 
 export interface AccessRequestResult {
   status: AccessRequestStatus;
@@ -33,5 +34,7 @@ export function accessRequestMessage(status: AccessRequestStatus): string {
       return "Το email σας είναι καταχωρημένο, αλλά η αποστολή απέτυχε. Ζητήστε το link από τον διαχειριστή.";
     case "invalid_email":
       return "Παρακαλούμε εισαγάγετε ένα έγκυρο email.";
+    case "rate_limited":
+      return "Έχουν γίνει πολλά αιτήματα. Παρακαλούμε δοκιμάστε ξανά αργότερα.";
   }
 }

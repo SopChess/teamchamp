@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 /**
@@ -8,6 +9,17 @@ import { cookies } from "next/headers";
  * Both sides must agree on the flow type or the magic-link callback breaks.
  */
 export function createClient() {
+  // Αν έχει οριστεί SUPABASE_SERVICE_ROLE_KEY (μόνο server-side), ΟΛΗ η
+  // πρόσβαση της εφαρμογής στα δεδομένα γίνεται με αυτό — το κλείσιμο
+  // ασφάλειας (harden.sql) βασίζεται σε αυτό. Χωρίς αυτό, χρησιμοποιείται το
+  // δημόσιο anon key όπως πριν. Το κλειδί δεν φτάνει ποτέ στον browser.
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceKey) {
+    return createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+
   const cookieStore = cookies();
 
   return createServerClient(

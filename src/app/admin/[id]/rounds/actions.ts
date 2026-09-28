@@ -70,6 +70,14 @@ async function commitPairings(
     throw new Error(`Αποτυχία εισαγωγής κλήρωσης: ${error.message}`);
   }
   await supabase.from("round_import_staging").delete().eq("round_id", roundId);
+
+  // Η δημοσίευση της κλήρωσης ανοίγει αυτόματα το παράθυρο κατάθεσης σύνθεσης.
+  // Ορίζεται ΜΟΝΟ την πρώτη φορά: μια διορθωτική επανεισαγωγή δεν το ξαναρχίζει.
+  await supabase
+    .from("rounds")
+    .update({ pairing_published_at: new Date().toISOString() })
+    .eq("id", roundId)
+    .is("pairing_published_at", null);
 }
 
 export async function uploadPairingsFile(competitionId: string, formData: FormData) {
@@ -197,4 +205,55 @@ export async function resolveTeamMapping(competitionId: string, roundId: string,
 
   revalidatePath(`/admin/${competitionId}/rounds`);
   redirect(`/admin/${competitionId}/rounds`);
+}
+
+/**
+ * Χειροκίνητη παράταση του παραθύρου κατάθεσης σύνθεσης για μία ομάδα
+ * (υπεύθυνος κληρώσεων / admin). Η παράταση μετράει από ΤΩΡΑ.
+ *  - Αν η ομάδα δεν έχει υποβάλει: ανοίγει/παρατείνεται το παράθυρο.
+ *  - Αν είχε ήδη εφαρμοστεί η εφεδρική σύνθεση (δεν υπέβαλε εγκαίρως): ξανανοίγει,
+ *    ώστε ο αρχηγός να υποβάλει κανονικά.
+ *  - Αν η ομάδα έχει ΥΠΟΒΑΛΕΙ σύνθεση: δεν επιτρέπεται (μόλις υποβληθεί δεν αλλάζει).
+ */
+export async function extendSubmissionWindow(
+  competitionId: string,
+  roundId: string,
+  teamId: string,
+  formData: FormData
+) {
+  const supabase = createClient();
+  const minutes = Number(formData.get("minutes"));
+  if (!Number.isFinite(minutes) || minutes < 1 || minutes > 120) {
+    throw new Error("Η παράταση πρέπει να είναι από 1 έως 120 λεπτά.");
+  }
+  const until = new Date(Date.now() + minutes * 60_000).toISOString();
+
+  const { data: comp } = await supabase
+    .from("round_compositions")
+    .select("id, status")
+    .eq("round_id", roundId)
+    .eq("team_id", teamId)
+    .maybeSingle();
+
+  if (comp && (comp.status === "submitted" || comp.status === "locked")) {
+    throw new Error("Η ομάδα έχει ήδη υποβάλει σύνθεση, δεν επιτρέπεται παράταση.");
+  }
+
+  if (!comp) {
+    const { error } = await supabase
+      .from("round_compositions")
+      .insert({ round_id: roundId, team_id: teamId, status: "open", extended_until: until });
+    if (error) throw new Error(`Αποτυχία παράτασης: ${error.message}`);
+  } else {
+    if (comp.status === "used_default") {
+      await supabase.from("board_assignments").delete().eq("round_composition_id", comp.id);
+    }
+    const { error } = await supabase
+      .from("round_compositions")
+      .update({ status: "open", submitted_at: null, submitted_by: null, extended_until: until })
+      .eq("id", comp.id);
+    if (error) throw new Error(`Αποτυχία παράτασης: ${error.message}`);
+  }
+
+  revalidatePath(`/admin/${competitionId}/rounds`);
 }

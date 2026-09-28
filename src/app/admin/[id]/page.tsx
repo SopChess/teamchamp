@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { saveRosterRules } from "../actions";
+import { saveRosterRules, saveScoringRules } from "../actions";
+import { TIEBREAK_LABELS, DEFAULT_TIEBREAKS } from "@/lib/standings/standings";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import Link from "next/link";
 
@@ -21,7 +22,18 @@ export default async function CompetitionPage({ params }: { params: { id: string
     .eq("competition_id", params.id)
     .maybeSingle<RosterRules & { competition_id: string }>();
 
+  const { data: scoring } = await supabase
+    .from("scoring_rules")
+    .select("*")
+    .eq("competition_id", params.id)
+    .maybeSingle();
+
   const boundSave = saveRosterRules.bind(null, params.id);
+  const boundScoring = saveScoringRules.bind(null, params.id);
+  const savedTiebreaks: string[] =
+    scoring?.tiebreak_criteria && scoring.tiebreak_criteria.length > 0
+      ? scoring.tiebreak_criteria
+      : DEFAULT_TIEBREAKS;
 
   return (
     <div className="min-h-screen px-6 py-10 max-w-2xl mx-auto flex flex-col gap-8">
@@ -112,6 +124,68 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm">
           Αποθήκευση Κανόνων Σύνθεσης
+        </button>
+      </form>
+
+      <form action={boundScoring} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
+        <div className="text-xs uppercase tracking-wide text-muted">Βαθμολογία &amp; Ισοβαθμία</div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            Νίκη (βαθμοί)
+            <input name="win_points" defaultValue={scoring?.win_points ?? 2} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Ισοπαλία
+            <input name="draw_points" defaultValue={scoring?.draw_points ?? 1} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Ήττα
+            <input name="loss_points" defaultValue={scoring?.loss_points ?? 0} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+        </div>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Ποινή ήττας χωρίς αγώνα (βαθμοί που αφαιρούνται, 0 = καμία)
+          <input name="forfeit_loss_penalty" defaultValue={scoring?.forfeit_loss_penalty ?? 0} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+        </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            BYE: βαθμοί συνάντησης
+            <input name="bye_match_points" defaultValue={scoring?.bye_match_points ?? 2} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            BYE: πόντοι σκακιερών (κενό = μισοί)
+            <input name="bye_board_points" defaultValue={scoring?.bye_board_points ?? ""} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="text-sm">Κριτήρια ισοβαθμίας (με σειρά προτεραιότητας)</div>
+          {[0, 1, 2].map((i) => (
+            <select
+              key={i}
+              name={`tiebreak_${i + 1}`}
+              defaultValue={savedTiebreaks[i] ?? ""}
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">— {i + 1}ο κριτήριο: κανένα —</option>
+              {Object.entries(TIEBREAK_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          ))}
+          <p className="text-xs text-muted">
+            Η ζωντανή κατάταξη που βλέπουν οι θεατές χρησιμοποιεί αυτές τις ρυθμίσεις. Η επίσημη
+            κατάταξη βγαίνει από το Swiss-Manager.
+          </p>
+        </div>
+
+        <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm">
+          Αποθήκευση Βαθμολογίας
         </button>
       </form>
     </div>

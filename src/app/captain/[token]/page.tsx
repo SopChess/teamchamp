@@ -6,8 +6,13 @@ import {
   moveRosterEntry,
   saveCaptainInfo,
   confirmRoster,
+  submitRoundComposition,
 } from "./actions";
 import type { RosterRules } from "@/lib/rosterRules/types";
+import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
+import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
+import CompositionForm from "./CompositionForm";
+import Countdown from "./Countdown";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,6 +63,12 @@ export default async function CaptainPortal({ params }: { params: { token: strin
     .eq("team_id", team.id)
     .maybeSingle();
 
+  const round = await loadCaptainRound(team.id, team.competition_id);
+  const roundRules = round.kind === "play" && !round.composition ? await loadRules(supabase, team.competition_id) : null;
+  const roundRoster = roundRules ? await loadRoster(supabase, team.id) : null;
+  const initialAssignments =
+    roundRules && roundRoster ? computeDefaultAssignment(roundRules, roundRoster.roster, roundRoster.players) : [];
+
   const deadlinePassed =
     !!team.roster_lock_deadline && new Date(team.roster_lock_deadline) < new Date();
   const editable = !team.roster_locked && !deadlinePassed;
@@ -78,6 +89,81 @@ export default async function CaptainPortal({ params }: { params: { token: strin
           {team.clubs_schools?.name ?? "Ομάδα"}
         </h1>
       </div>
+
+
+      {round.kind === "bye" && (
+        <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 text-sm">
+          <div className="font-semibold">Γύρος {round.roundNumber}</div>
+          <p className="text-muted mt-1">Η ομάδα σας έχει ελεύθερο γύρο (bye). Δεν απαιτείται σύνθεση.</p>
+        </div>
+      )}
+
+      {round.kind === "play" && (
+        <section className="flex flex-col gap-5">
+          <div className="bg-card border border-cardBorder rounded-xl px-4 py-4">
+            <div className="text-xs uppercase tracking-wide text-muted">
+              Γύρος {round.roundNumber} · Προετοιμασία Σύνθεσης
+            </div>
+            {round.window.open && round.window.endsAt && !round.composition ? (
+              <div className="mt-2">
+                <Countdown endsAt={round.window.endsAt} />
+                <div className="text-xs text-muted mt-1">λεπτά που απομένουν για την υποβολή</div>
+              </div>
+            ) : (
+              <div className="text-sm mt-2 text-muted">
+                {round.composition ? "Η σύνθεση του γύρου έχει οριστικοποιηθεί." : "Το χρονικό παράθυρο υποβολής έχει λήξει."}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl px-4 py-3 border" style={{ background: "#1B1826", borderColor: "#3A2E52" }}>
+            <div className="text-xs uppercase tracking-wide text-muted mb-1">Αντίπαλος · Βασική Σύνθεση</div>
+            <div className="font-bold mb-2" style={{ color: "#C9A8E8" }}>{round.opponentName}</div>
+            <div className="flex flex-col gap-1">
+              {round.opponentRoster.map((o) => (
+                <div key={o.order} className="flex items-center gap-2 text-sm">
+                  <span className="w-5 text-xs font-bold text-muted2">{o.order}</span>
+                  <span className="flex-1 truncate" style={{ color: "#C7CEDD" }}>{o.name}</span>
+                  <span className="text-xs text-muted2">{o.rating ?? ""}</span>
+                </div>
+              ))}
+              {round.opponentRoster.length === 0 && (
+                <span className="text-xs text-muted">Δεν έχει δηλωθεί ακόμα βασική σύνθεση.</span>
+              )}
+            </div>
+          </div>
+
+          {round.composition && (
+            <div className="bg-card border border-cardBorder rounded-xl px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-muted mb-2">Η σύνθεσή σας για τον γύρο</div>
+              {round.composition.assignments.map((a) => (
+                <div key={a.board} className="flex justify-between py-1.5 text-sm border-b border-cardBorder last:border-b-0">
+                  <span className="text-muted">Σκακιέρα {a.board}</span>
+                  <span className="font-semibold">{a.playerName}</span>
+                </div>
+              ))}
+              {round.composition.status === "used_default" && (
+                <p className="text-xs text-muted mt-2">
+                  Δεν υποβλήθηκε σύνθεση εγκαίρως, οπότε εφαρμόστηκε η βασική σύνθεση όπως δηλώθηκε.
+                </p>
+              )}
+            </div>
+          )}
+
+          {!round.composition && round.window.open && roundRules && roundRoster && (
+            <CompositionForm
+              rules={roundRules}
+              roster={roundRoster.roster}
+              players={roundRoster.players}
+              initial={initialAssignments}
+              submit={submitRoundComposition.bind(null, params.token, round.roundId)}
+            />
+          )}
+          {!round.composition && round.window.open && !roundRules && (
+            <p className="text-sm text-muted">Δεν έχουν οριστεί ακόμα κανόνες σύνθεσης για τη διοργάνωση.</p>
+          )}
+        </section>
+      )}
 
       <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex items-center justify-between">
         <div>

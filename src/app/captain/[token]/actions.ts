@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { RosterRules } from "@/lib/rosterRules/types";
+import type { RosterRules, BoardAssignment } from "@/lib/rosterRules/types";
+import { validateComposition } from "@/lib/rosterRules/engine";
+import { submissionWindow } from "@/lib/rounds/window";
+import { loadRoster, loadRules } from "@/lib/rounds/server";
 
 /**
  * Κάθε action εδώ επαληθεύει το token ΞΑΝΑ από την αρχή — δεν εμπιστευόμαστε
@@ -211,4 +214,136 @@ export async function confirmRoster(token: string) {
   }
 
   revalidatePath(`/captain/${token}`);
+}
+
+export type SubmitCompositionResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Υποβολή σύνθεσης γύρου από τον αρχηγό (Στάδιο 2). Όλοι οι έλεγχοι γίνονται
+ * ΞΑΝΑ στον server (δεν εμπιστευόμαστε τον browser): έγκυρο token, ο γύρος έχει
+ * δημοσιευτεί και η ομάδα παίζει σε αυτόν, το παράθυρο είναι ακόμα ανοιχτό,
+ * δεν έχει ήδη υποβληθεί σύνθεση (μόλις υποβληθεί, δεν αλλάζει), και η σύνθεση
+ * πληροί τους κανόνες της διοργάνωσης.
+ *
+ * Επιστρέφει αποτέλεσμα αντί να πετάει σφάλμα: στην παραγωγή τα μηνύματα
+ * σφαλμάτων των server actions κρύβονται, και ο αρχηγός πρέπει να βλέπει τι
+ * ακριβώς χρειάζεται διόρθωση.
+ */
+export async function submitRoundComposition(
+  token: string,
+  roundId: string,
+  assignmentsJson: string
+): Promise<SubmitCompositionResult> {
+  try {
+    const supabase = createClient();
+    const team = await getTeamByToken(token);
+
+    const { data: round } = await supabase
+      .from("rounds")
+      .select("id, competition_id, round_number, pairing_published_at, submission_window_minutes")
+      .eq("id", roundId)
+      .maybeSingle();
+
+    if (!round || round.competition_id !== team.competition_id || !round.pairing_published_at) {
+      return { ok: false, message: "Ο γύρος δεν είναι διαθέσιμος για κατάθεση σύνθεσης." };
+    }
+
+    const { data: pairings } = await supabase
+      .from("pairings")
+      .select("team_a_id, team_b_id")
+      .eq("round_id", roundId);
+    const plays = (pairings ?? []).some(
+      (p) => p.team_b_id && (p.team_a_id === team.id || p.team_b_id === team.id)
+    );
+    if (!plays) {
+      return { ok: false, message: "Η ομάδα σας δεν αγωνίζεται σε αυτόν τον γύρο." };
+    }
+
+    const { data: existing } = await supabase
+      .from("round_compositions")
+      .select("id, status, extended_until")
+      .eq("round_id", roundId)
+      .eq("team_id", team.id)
+      .maybeSingle();
+
+    if (existing && existing.status !== "open") {
+      return { ok: false, message: "Η σύνθεση για αυτόν τον γύρο έχει ήδη υποβληθεί και δεν αλλάζει." };
+    }
+
+    const win = submissionWindow({
+      publishedAt: round.pairing_published_at,
+      windowMinutes: round.submission_window_minutes,
+      extendedUntil: existing?.extended_until ?? null,
+    });
+    if (!win.open) {
+      return { ok: false, message: "Το χρονικό παράθυρο κατάθεσης σύνθεσης έχει λήξει." };
+    }
+
+    let assignments: BoardAssignment[];
+    try {
+      const parsed = JSON.parse(assignmentsJson);
+      if (!Array.isArray(parsed)) throw new Error("not array");
+      assignments = parsed.map((a: { board: unknown; player_id: unknown }) => ({
+        board: Number(a.board),
+        player_id: String(a.player_id),
+      }));
+      if (assignments.some((a) => !Number.isInteger(a.board) || a.board < 1)) throw new Error("bad board");
+    } catch {
+      return { ok: false, message: "Η σύνθεση δεν είναι έγκυρη. Παρακαλούμε δοκιμάστε ξανά." };
+    }
+
+    const rules = await loadRules(supabase, team.competition_id);
+    if (!rules) {
+      return { ok: false, message: "Δεν έχουν οριστεί ακόμα κανόνες σύνθεσης για τη διοργάνωση." };
+    }
+    const { roster, players } = await loadRoster(supabase, team.id);
+
+    const check = validateComposition(rules, roster, players, assignments);
+    if (!check.valid) {
+      return { ok: false, message: check.issues.map((i) => i.message).join(" ") };
+    }
+
+    let compositionId = existing?.id as string | undefined;
+    const nowIso = new Date().toISOString();
+    if (compositionId) {
+      const { error } = await supabase
+        .from("round_compositions")
+        .update({ status: "submitted", submitted_at: nowIso, submitted_by: "captain" })
+        .eq("id", compositionId);
+      if (error) return { ok: false, message: `Αποτυχία αποθήκευσης: ${error.message}` };
+    } else {
+      const { data: created, error } = await supabase
+        .from("round_compositions")
+        .insert({
+          round_id: roundId,
+          team_id: team.id,
+          status: "submitted",
+          submitted_at: nowIso,
+          submitted_by: "captain",
+        })
+        .select("id")
+        .single();
+      if (error || !created) {
+        return { ok: false, message: `Αποτυχία αποθήκευσης: ${error?.message ?? "άγνωστο σφάλμα"}` };
+      }
+      compositionId = created.id;
+    }
+
+    await supabase.from("board_assignments").delete().eq("round_composition_id", compositionId);
+    const { error: assignError } = await supabase.from("board_assignments").insert(
+      assignments.map((a) => ({
+        round_composition_id: compositionId,
+        board_number: a.board,
+        player_id: a.player_id,
+      }))
+    );
+    if (assignError) {
+      return { ok: false, message: `Αποτυχία αποθήκευσης σκακιερών: ${assignError.message}` };
+    }
+
+    revalidatePath(`/captain/${token}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Άγνωστο σφάλμα." };
+  }
 }

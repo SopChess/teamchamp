@@ -214,3 +214,60 @@ describe("effectiveRating — FIDE → εθνικό → 800 fallback", () => {
     expect(effectiveRating({ id: "x", first_name: "", last_name: "" })).toBe(800);
   });
 });
+
+describe("computeDefaultAssignment — αυτόματη επιλογή όταν δεν υπάρχει ρητό default_board", () => {
+  const rosterNoDefaults: RosterEntry[] = [
+    { player_id: "p1", declared_order: 1 },
+    { player_id: "p2", declared_order: 2 },
+    { player_id: "p3", declared_order: 3 },
+    { player_id: "p4", declared_order: 4 },
+    { player_id: "p5", declared_order: 5 },
+    { player_id: "p6", declared_order: 6 },
+  ];
+
+  it("strength_order: η γυναικεία σκακιέρα παίρνει την πρώτη κατά σειρά επιλέξιμη αθλήτρια, οι άλλες τη σειρά", () => {
+    const result = computeDefaultAssignment(schoolRules, rosterNoDefaults, schoolPlayers);
+    expect(result).toEqual([
+      { board: 1, player_id: "p1" },
+      { board: 2, player_id: "p3" },
+      { board: 3, player_id: "p4" },
+      { board: 4, player_id: "p2" }, // p2 = πρώτη γυναίκα κατά σειρά
+    ]);
+  });
+
+  it("το αποτέλεσμα περνά πάντα την επικύρωση κανόνων", () => {
+    const result = computeDefaultAssignment(schoolRules, rosterNoDefaults, schoolPlayers);
+    expect(validateComposition(schoolRules, rosterNoDefaults, schoolPlayers, result).valid).toBe(true);
+  });
+
+  it("δεν βάζει τον ίδιο παίκτη σε δύο σκακιέρες", () => {
+    const result = computeDefaultAssignment(schoolRules, rosterNoDefaults, schoolPlayers);
+    expect(new Set(result.map((a) => a.player_id)).size).toBe(result.length);
+  });
+
+  it("fixed_category: κάθε σκακιέρα παίρνει τον πρώτο επιλέξιμο, χωρίς επανάληψη", () => {
+    const roster: RosterEntry[] = [
+      { player_id: "a", declared_order: 1 },
+      { player_id: "b", declared_order: 2 },
+      { player_id: "c", declared_order: 3 },
+    ];
+    const result = computeDefaultAssignment(fixedCategoryRules, roster, fixedCategoryPlayers);
+    expect(result).toEqual([
+      { board: 1, player_id: "a" },
+      { board: 2, player_id: "b" },
+      { board: 5, player_id: "c" }, // c = πρώτο κορίτσι <16 που δεν χρησιμοποιήθηκε
+    ]);
+  });
+
+  it("αν δεν υπάρχει επιλέξιμος παίκτης, η σκακιέρα μένει κενή (θα την πιάσει ο έλεγχος)", () => {
+    const menOnly: RosterEntry[] = [
+      { player_id: "p1", declared_order: 1 },
+      { player_id: "p3", declared_order: 2 },
+      { player_id: "p5", declared_order: 3 },
+      { player_id: "p2x", declared_order: 4 },
+    ];
+    const players = { ...schoolPlayers, p2x: { id: "p2x", first_name: "X", last_name: "Y", gender: "M" as const } };
+    const result = computeDefaultAssignment(schoolRules, menOnly, players);
+    expect(result.find((a) => a.board === 4)).toBeUndefined();
+  });
+});

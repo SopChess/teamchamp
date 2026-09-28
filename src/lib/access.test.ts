@@ -42,6 +42,17 @@ describe("isPathAllowed", () => {
     expect(isPathAllowed(tournamentAdmin, "/referee")).toBe(false);
   });
 
+  it("η σάρωση QR (/r/...) επιτρέπεται σε super_admin, referee και tournament_admin", () => {
+    expect(isPathAllowed(superAdmin, "/r/abc123")).toBe(true);
+    expect(isPathAllowed(referee, "/r/abc123")).toBe(true);
+    expect(isPathAllowed(tournamentAdmin, "/r/abc123")).toBe(true);
+  });
+
+  it("δεν μπερδεύει το /r με άλλα paths (π.χ. /rounds, /referee-x)", () => {
+    expect(isPathAllowed(referee, "/rounds")).toBe(false);
+    expect(isPathAllowed(referee, "/refereex")).toBe(false);
+  });
+
   it("δεν μπερδεύει παρόμοια paths (π.χ. /administrator)", () => {
     expect(isPathAllowed(superAdmin, "/administrator")).toBe(false);
   });

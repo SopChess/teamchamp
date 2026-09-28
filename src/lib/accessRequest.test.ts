@@ -12,6 +12,7 @@ const ALL: AccessRequestStatus[] = [
   "sending_disabled",
   "send_failed",
   "invalid_email",
+  "rate_limited",
 ];
 
 describe("normalizeEmail / isValidEmail", () => {
