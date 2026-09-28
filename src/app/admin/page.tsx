@@ -27,6 +27,9 @@ export default async function AdminHome() {
             <Link href="/admin/clubs" className="text-xs text-gold underline">
               Σύλλογοι/Σχολεία →
             </Link>
+            <Link href="/admin/directory" className="text-xs text-gold underline">
+              Κατάλογος Αθλητών →
+            </Link>
           </div>
         </div>
       </div>

@@ -57,7 +57,8 @@ export function createFakeDb(config: FakeDbConfig) {
     private payload: any = null;
     private cols = "*";
     private wantReturn = false;
-    private orderSpec: { col: string; asc: boolean } | null = null;
+    private orderSpecs: { col: string; asc: boolean }[] = [];
+    private limitN: number | null = null;
     private mode: "many" | "maybe" | "single" = "many";
     private headCount = false;
     private onConflict: string[] | null = null;
@@ -88,7 +89,16 @@ export function createFakeDb(config: FakeDbConfig) {
       else throw new Error(`fakeDb: not(${op}) δεν υποστηρίζεται`);
       return this;
     }
-    ilike(col: string, pat: string) { this.filters.push((r) => String(r[col]).toLowerCase() === pat.toLowerCase()); return this; }
+    like(col: string, pat: string) {
+      const rx = new RegExp("^" + pat.split("%").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+      this.filters.push((r) => rx.test(String(r[col] ?? "")));
+      return this;
+    }
+    ilike(col: string, pat: string) {
+      const rx = new RegExp("^" + pat.split("%").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$", "i");
+      this.filters.push((r) => rx.test(String(r[col] ?? "")));
+      return this;
+    }
     or(expr: string) {
       const conds = expr.split(",").map((c) => {
         const [col, op, ...rest] = c.split(".");
@@ -98,8 +108,8 @@ export function createFakeDb(config: FakeDbConfig) {
       this.filters.push((r) => conds.some((c) => r[c.col] === c.val));
       return this;
     }
-    order_(col: string, o?: { ascending?: boolean }) { this.orderSpec = { col, asc: o?.ascending !== false }; return this; }
-    limit() { return this; }
+    order_(col: string, o?: { ascending?: boolean }) { this.orderSpecs.push({ col, asc: o?.ascending !== false }); return this; }
+    limit(n: number) { this.limitN = n; return this; }
     maybeSingle() { this.mode = "maybe"; return this; }
     single() { this.mode = "single"; return this; }
 
@@ -119,10 +129,16 @@ export function createFakeDb(config: FakeDbConfig) {
 
       if (this.op === "select") {
         let found = matches();
-        if (this.orderSpec) {
-          const { col, asc } = this.orderSpec;
-          found = [...found].sort((a, b) => (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) * (asc ? 1 : -1));
+        if (this.orderSpecs.length) {
+          found = [...found].sort((a, b) => {
+            for (const { col, asc } of this.orderSpecs) {
+              const c = a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0;
+              if (c !== 0) return c * (asc ? 1 : -1);
+            }
+            return 0;
+          });
         }
+        if (this.limitN != null) found = found.slice(0, this.limitN);
         if (this.headCount) return { data: null, error: null, count: found.length };
         const projected = found.map((r) => project(this.table, r, this.cols));
         return this.shape(projected);

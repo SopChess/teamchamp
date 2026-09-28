@@ -6,6 +6,14 @@ import type { RosterRules, BoardAssignment } from "@/lib/rosterRules/types";
 import { validateComposition } from "@/lib/rosterRules/engine";
 import { submissionWindow } from "@/lib/rounds/window";
 import { loadRoster, loadRules } from "@/lib/rounds/server";
+import { cleanName } from "@/lib/transliterate";
+import {
+  isGender, toHit, toPlayerFields, type DirectoryHit, type Gender, type PlayerFields,
+} from "@/lib/players/directory";
+import {
+  findAthleteInCompetition, findDirectoryRowById, findDirectoryRowByNumber,
+  nextDeclaredOrder, searchDirectoryRows,
+} from "@/lib/players/server";
 
 /**
  * Κάθε action εδώ επαληθεύει το token ΞΑΝΑ από την αρχή — δεν εμπιστευόμαστε
@@ -35,10 +43,19 @@ function assertRosterEditable(team: { roster_locked: boolean; roster_lock_deadli
   }
 }
 
-export async function addPlayerToRoster(token: string, formData: FormData) {
+export type AddAthleteResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Κοινός κώδικας προσθήκης αθλητή στη βασική σύνθεση — και για τη χειροκίνητη
+ * καταχώρηση και για την επιλογή από τον κατάλογο. Ελέγχει: όριο αθλητών,
+ * ΔΙΠΛΗ ΕΓΓΡΑΦΗ σε όλη τη διοργάνωση (όχι μόνο στη δική σας ομάδα), και υπολογίζει
+ * σωστά την επόμενη θέση.
+ */
+async function addAthleteToTeam(
+  team: { id: string; competition_id: string },
+  fields: Omit<PlayerFields, "directory_id"> & { directory_id: string | null }
+): Promise<AddAthleteResult> {
   const supabase = createClient();
-  const team = await getTeamByToken(token);
-  assertRosterEditable(team);
 
   const { data: rules } = await supabase
     .from("roster_rules")
@@ -52,56 +69,146 @@ export async function addPlayerToRoster(token: string, formData: FormData) {
     .eq("team_id", team.id);
 
   if (rules?.roster_size != null && (count ?? 0) >= rules.roster_size) {
-    throw new Error(`Η βασική σύνθεση επιτρέπει το πολύ ${rules.roster_size} αθλητές.`);
+    return { ok: false, message: `Η βασική σύνθεση επιτρέπει το πολύ ${rules.roster_size} αθλητές.` };
   }
 
-  const firstName = String(formData.get("first_name") ?? "").trim();
-  const lastName = String(formData.get("last_name") ?? "").trim();
+  const duplicate = await findAthleteInCompetition(supabase, team.competition_id, fields);
+  if (duplicate) {
+    return {
+      ok: false,
+      message:
+        duplicate.teamId === team.id
+          ? "Ο αθλητής είναι ήδη στη βασική σύνθεση της ομάδας σας."
+          : "Ο αθλητής είναι ήδη δηλωμένος σε άλλη ομάδα της διοργάνωσης.",
+    };
+  }
+
+  // Ίδιος αθλητής του καταλόγου από προηγούμενη διοργάνωση: επαναχρησιμοποιείται η εγγραφή του.
+  let playerId: string | undefined;
+  let createdHere = false;
+  if (fields.directory_id) {
+    const { data: existing } = await supabase
+      .from("players")
+      .select("id")
+      .eq("directory_id", fields.directory_id)
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      playerId = existing.id;
+      await supabase.from("players").update(fields).eq("id", playerId);
+    }
+  }
+  if (!playerId) {
+    const { data: created, error } = await supabase.from("players").insert(fields).select("id").single();
+    if (error || !created) {
+      return { ok: false, message: `Αποτυχία καταχώρησης αθλητή: ${error?.message ?? "άγνωστο σφάλμα"}` };
+    }
+    playerId = created.id;
+    createdHere = true;
+  }
+
+  const order = await nextDeclaredOrder(supabase, team.id);
+  const { error: entryError } = await supabase.from("roster_entries").insert({
+    team_id: team.id,
+    player_id: playerId,
+    declared_order: order,
+  });
+  if (entryError) {
+    if (createdHere) await supabase.from("players").delete().eq("id", playerId);
+    return { ok: false, message: `Αποτυχία προσθήκης στη σύνθεση: ${entryError.message}` };
+  }
+
+  return { ok: true };
+}
+
+/** Χειροκίνητη προσθήκη (όταν ο αθλητής δεν βρίσκεται στον κατάλογο). Το φύλο είναι υποχρεωτικό. */
+export async function addPlayerToRoster(token: string, formData: FormData) {
+  const team = await getTeamByToken(token);
+  assertRosterEditable(team);
+
+  const firstName = cleanName(String(formData.get("first_name") ?? ""));
+  const lastName = cleanName(String(formData.get("last_name") ?? ""));
+  const gender = String(formData.get("gender") ?? "");
   const birthDate = String(formData.get("birth_date") ?? "") || null;
-  const gender = String(formData.get("gender") ?? "") || null;
-  const ratingNational = formData.get("rating_national")
-    ? Number(formData.get("rating_national"))
-    : null;
-  const ratingFide = formData.get("rating_fide") ? Number(formData.get("rating_fide")) : null;
-  const nationalId = String(formData.get("national_id") ?? "") || null;
-  const fideId = String(formData.get("fide_id") ?? "") || null;
+  const numberOrNull = (name: string) => {
+    const raw = String(formData.get(name) ?? "").trim();
+    const n = Number(raw);
+    return raw !== "" && Number.isFinite(n) ? n : null;
+  };
 
   if (!firstName || !lastName) {
     throw new Error("Όνομα και επώνυμο (λατινικά) είναι υποχρεωτικά.");
   }
-
-  const { data: player, error: playerError } = await supabase
-    .from("players")
-    .insert({
-      first_name: firstName,
-      last_name: lastName,
-      birth_date: birthDate,
-      gender,
-      rating_national: ratingNational,
-      rating_fide: ratingFide,
-      national_id: nationalId,
-      fide_id: fideId,
-    })
-    .select("id")
-    .single();
-
-  if (playerError) {
-    throw new Error(`Αποτυχία καταχώρησης αθλητή: ${playerError.message}`);
+  if (!isGender(gender)) {
+    throw new Error("Επιλέξτε το φύλο του αθλητή (Άνδρας ή Γυναίκα).");
   }
 
-  const nextOrder = (count ?? 0) + 1;
-
-  const { error: entryError } = await supabase.from("roster_entries").insert({
-    team_id: team.id,
-    player_id: player.id,
-    declared_order: nextOrder,
+  const result = await addAthleteToTeam(team, {
+    first_name: firstName,
+    last_name: lastName,
+    birth_date: birthDate,
+    gender,
+    rating_national: numberOrNull("rating_national"),
+    rating_fide: numberOrNull("rating_fide"),
+    national_id: String(formData.get("national_id") ?? "").trim() || null,
+    fide_id: String(formData.get("fide_id") ?? "").trim() || null,
+    directory_id: null,
   });
-
-  if (entryError) {
-    throw new Error(`Αποτυχία προσθήκης στη σύνθεση: ${entryError.message}`);
-  }
+  if (!result.ok) throw new Error(result.message);
 
   revalidatePath(`/captain/${token}`);
+}
+
+/**
+ * Αναζήτηση στον κατάλογο. Απαιτεί έγκυρο link αρχηγού, ώστε ο κατάλογος (που έχει
+ * στοιχεία ανηλίκων) να μην είναι δημόσια προσβάσιμος. Επιστρέφει μόνο ό,τι χρειάζεται
+ * για την επιλογή: όχι πλήρη γενέθλια.
+ */
+export async function searchDirectory(token: string, epitheto: string, onoma: string): Promise<DirectoryHit[]> {
+  try {
+    await getTeamByToken(token);
+  } catch {
+    return [];
+  }
+  const rows = await searchDirectoryRows(createClient(), epitheto, onoma);
+  return rows.map(toHit);
+}
+
+export async function searchDirectoryByNumber(token: string, number: string): Promise<DirectoryHit | null> {
+  try {
+    await getTeamByToken(token);
+  } catch {
+    return null;
+  }
+  const row = await findDirectoryRowByNumber(createClient(), number);
+  return row ? toHit(row) : null;
+}
+
+/**
+ * Προσθήκη αθλητή που επιλέχθηκε από τον κατάλογο. Τα στοιχεία (όνομα, γενέθλια,
+ * βαθμοί) διαβάζονται ΞΑΝΑ στον server από τον κατάλογο — ο browser στέλνει μόνο τον
+ * κωδικό και το φύλο. Το φύλο είναι υποχρεωτικό και το επιλέγει ο υπεύθυνος.
+ */
+export async function addDirectoryPlayerToRoster(
+  token: string,
+  directoryId: string,
+  gender: Gender | string
+): Promise<AddAthleteResult> {
+  try {
+    const team = await getTeamByToken(token);
+    assertRosterEditable(team);
+    if (!isGender(gender)) {
+      return { ok: false, message: "Επιλέξτε το φύλο του αθλητή (Άνδρας ή Γυναίκα)." };
+    }
+    const row = await findDirectoryRowById(createClient(), directoryId);
+    if (!row) return { ok: false, message: "Ο αθλητής δεν βρέθηκε στον κατάλογο." };
+
+    const result = await addAthleteToTeam(team, toPlayerFields(row, gender));
+    if (result.ok) revalidatePath(`/captain/${token}`);
+    return result;
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Άγνωστο σφάλμα." };
+  }
 }
 
 export async function removeRosterEntry(token: string, entryId: string) {

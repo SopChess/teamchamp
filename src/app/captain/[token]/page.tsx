@@ -7,11 +7,15 @@ import {
   saveCaptainInfo,
   confirmRoster,
   submitRoundComposition,
+  searchDirectory,
+  searchDirectoryByNumber,
+  addDirectoryPlayerToRoster,
 } from "./actions";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
 import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
 import CompositionForm from "./CompositionForm";
+import PlayerSearch from "./PlayerSearch";
 import Countdown from "./Countdown";
 
 export const dynamic = "force-dynamic";
@@ -213,7 +217,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
                   </div>
                   <div className="text-xs text-muted">
                     {player?.rating_fide ?? player?.rating_national ?? "—"}
-                    {player?.gender ? ` · ${player.gender}` : ""}
+                    {player?.gender ? ` · ${player.gender === "F" ? "Γ" : "Α"}` : ""}
                   </div>
                 </div>
                 {editable && (
@@ -259,18 +263,27 @@ export default async function CaptainPortal({ params }: { params: { token: strin
       </div>
 
       {editable && (
+        <PlayerSearch
+          search={searchDirectory.bind(null, params.token)}
+          searchByNumber={searchDirectoryByNumber.bind(null, params.token)}
+          add={addDirectoryPlayerToRoster.bind(null, params.token)}
+          available={!!process.env.SUPABASE_SERVICE_ROLE_KEY}
+        />
+      )}
+
+      {editable && (
         <form action={boundAddPlayer} className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
-          <div className="text-xs uppercase tracking-wide text-muted">Προσθήκη Αθλητή (λατινικά)</div>
+          <div className="text-xs uppercase tracking-wide text-muted">Χειροκίνητη προσθήκη (αν δεν βρίσκεται στον κατάλογο) · λατινικά</div>
           <div className="flex gap-2">
             <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
             <input name="last_name" required placeholder="Επώνυμο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
           </div>
           <div className="flex gap-2">
             <input name="birth_date" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-            <select name="gender" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1">
-              <option value="">Φύλο</option>
-              <option value="M">Α</option>
-              <option value="F">Γ</option>
+            <select name="gender" required defaultValue="" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1">
+              <option value="" disabled>Φύλο *</option>
+              <option value="M">Άνδρας</option>
+              <option value="F">Γυναίκα</option>
             </select>
           </div>
           <div className="flex gap-2">
