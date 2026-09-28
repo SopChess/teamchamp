@@ -81,10 +81,48 @@ describe("toHit — τι φτάνει στον browser", () => {
     expect(hit.birthYear).toBe(2012);
     expect(JSON.stringify(hit)).not.toContain("17/08");
     expect(JSON.stringify(hit)).not.toContain("2012-08");
-    expect(Object.keys(hit).sort()).toEqual(["birthYear", "club", "epitheto", "eso_id", "id", "onoma", "rating"]);
+    expect(Object.keys(hit).sort()).toEqual(["birthYear", "club", "epitheto", "eso_id", "id", "onoma", "rating", "sexEso"]);
   });
   it("δέχεται παίκτη χωρίς γενέθλια", () => {
     expect(toHit(row({ birthday: "" })).birthYear).toBeNull();
+  });
+  it("η υπόδειξη φύλου ΕΣΟ: «F» μόνο όταν η λίστα σημειώνει γυναίκα, αλλιώς null", () => {
+    expect(toHit(row({ sex_eso: "F" })).sexEso).toBe("F");
+    expect(toHit(row({ sex_eso: null })).sexEso).toBeNull();
+    expect(toHit(row({})).sexEso).toBeNull();
+    expect(toHit(row({ sex_eso: "M" })).sexEso).toBeNull(); // δεν υπάρχει τέτοια τιμή στη λίστα· δεν την προωθούμε
+  });
+  it("η υπόδειξη δεν επηρεάζει το φύλο που θα αποθηκευτεί (το δίνει πάντα ο υπεύθυνος)", () => {
+    expect(toPlayerFields(row({ sex_eso: "F" }), "M").gender).toBe("M");
+  });
+});
+
+describe("επίσημα λατινικά ονόματα της ΕΣΟ", () => {
+  it("χρησιμοποιούνται όταν υπάρχουν (επώνυμο κεφαλαία, όνομα με αρχικό κεφαλαίο)", () => {
+    const f = toPlayerFields(row({ epitheto: "ΧΑΜΟΓΙΩΡΓΑΚΗΣ", onoma: "ΓΕΩΡΓΙΟΣ", lastname_en: "CHAMOGIORGAKIS", firstname_en: "GEORGIOS" }), "M");
+    expect(f.last_name).toBe("CHAMOGIORGAKIS");
+    expect(f.first_name).toBe("Georgios");
+  });
+  it("διαφέρουν από τη μεταγραφή όταν η ΕΣΟ γράφει αλλιώς (η επίσημη γραφή υπερισχύει)", () => {
+    const f = toPlayerFields(row({ epitheto: "ΓΙΑΝΝΟΠΟΥΛΟΣ", onoma: "ΙΩΑΝΝΗΣ", lastname_en: "GIANOPOULOS", firstname_en: "IOANNIS" }), "M");
+    expect(f.last_name).toBe("GIANOPOULOS"); // η μεταγραφή θα έδινε GIANNOPOULOS
+  });
+  it("σύνθετα και με παύλα ονόματα", () => {
+    expect(toPlayerFields(row({ lastname_en: "PAPA-DOPOULOS", firstname_en: "MARIA-ELENI" }), "F").first_name).toBe("Maria-Eleni");
+  });
+  it("χωρίς επίσημα ονόματα μένει η μεταγραφή ΕΛΟΤ 743", () => {
+    const f = toPlayerFields(row({ epitheto: "ΤΣΟΥΡΟΣ", onoma: "ΓΕΩΡΓΙΟΣ", lastname_en: null, firstname_en: null }), "M");
+    expect(f.last_name).toBe("TSOUROS");
+    expect(f.first_name).toBe("Georgios");
+  });
+  it("μόνο το επώνυμο επίσημο: το όνομα μεταγράφεται", () => {
+    const f = toPlayerFields(row({ epitheto: "ΤΣΟΥΡΟΣ", onoma: "ΓΕΩΡΓΙΟΣ", lastname_en: "TSOUROS", firstname_en: "" }), "M");
+    expect(f.last_name).toBe("TSOUROS");
+    expect(f.first_name).toBe("Georgios");
+  });
+  it("κενά ή κενές τιμές δεν θεωρούνται επίσημα ονόματα", () => {
+    const f = toPlayerFields(row({ epitheto: "ΤΣΟΥΡΟΣ", onoma: "ΓΕΩΡΓΙΟΣ", lastname_en: "   ", firstname_en: "  " }), "M");
+    expect(f.last_name).toBe("TSOUROS");
   });
 });
 

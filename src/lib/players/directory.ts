@@ -13,6 +13,11 @@ export interface DirectoryRow {
   rating_fide_standard: string | null;
   rating_fide_rapid: string | null;
   rating_fide_blitz: string | null;
+  /** Από τη λίστα ΕΣΟ: 'F' αν σημειώνεται γυναίκα. Δεν υπάρχει πριν την πρώτη ενημέρωση. */
+  sex_eso?: string | null;
+  /** Επίσημα λατινικά ονόματα της ΕΣΟ (όπου υπάρχουν) */
+  lastname_en?: string | null;
+  firstname_en?: string | null;
 }
 
 /**
@@ -28,10 +33,15 @@ export interface DirectoryHit {
   birthYear: number | null;
   eso_id: string | null;
   rating: number | null;
+  /** Υπόδειξη από την ΕΣΟ: "F" αν η λίστα σημειώνει γυναίκα. Ο υπεύθυνος ομάδας επιλέγει πάντα ο ίδιος. */
+  sexEso: "F" | null;
 }
 
-export const DIRECTORY_SELECT =
+const LEGACY_COLUMNS =
   "id, eso_id, fide_id, epitheto, onoma, club, birthday, rating_eso, rating_fide_standard, rating_fide_rapid, rating_fide_blitz";
+export const DIRECTORY_SELECT = `${LEGACY_COLUMNS}, sex_eso, lastname_en, firstname_en`;
+/** Χωρίς τις στήλες της ΕΣΟ: για την περίπτωση που το SQL δεν έχει ξανατρέξει μετά την ενημέρωση του κώδικα. */
+export const DIRECTORY_SELECT_LEGACY = LEGACY_COLUMNS;
 
 /** Πάντα το πολύ 15 αποτελέσματα — δεν μπορεί να "κατεβάσει" κανείς τον κατάλογο. */
 export const SEARCH_LIMIT = 15;
@@ -75,6 +85,7 @@ export function toHit(row: DirectoryRow): DirectoryHit {
     birthYear: parseBirthday(row.birthday)?.year ?? null,
     eso_id: row.eso_id,
     rating: displayRating(row),
+    sexEso: row.sex_eso === "F" ? "F" : null,
   };
 }
 
@@ -107,9 +118,13 @@ export interface PlayerFields {
  * ποτέ από το όνομα.
  */
 export function toPlayerFields(row: DirectoryRow, gender: Gender): PlayerFields {
+  // Προτιμώνται τα ΕΠΙΣΗΜΑ λατινικά ονόματα της ΕΣΟ (όπου υπάρχουν, ~99% στους νέους)·
+  // αλλιώς μεταγραφή ΕΛΟΤ 743.
+  const officialLast = cleanName(row.lastname_en ?? "");
+  const officialFirst = cleanName(row.firstname_en ?? "");
   return {
-    first_name: titleCaseLatin(elot743(cleanName(row.onoma))),
-    last_name: elot743(cleanName(row.epitheto)).toUpperCase(),
+    first_name: officialFirst ? titleCaseLatin(officialFirst) : titleCaseLatin(elot743(cleanName(row.onoma))),
+    last_name: officialLast ? officialLast.toUpperCase() : elot743(cleanName(row.epitheto)).toUpperCase(),
     birth_date: parseBirthday(row.birthday)?.iso ?? null,
     gender,
     rating_national: nationalRating(row),

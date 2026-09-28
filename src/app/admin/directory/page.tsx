@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentAccess } from "@/lib/access.server";
 import DirectoryTester from "./DirectoryTester";
+import EsoImport, { type LastImport } from "./EsoImport";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,11 +12,28 @@ export default async function DirectoryPage() {
 
   let total: number | null = null;
   let tableMissing = false;
+  let lastImport: LastImport | null = null;
+  let esoColumnsMissing = false;
+  const access = await getCurrentAccess();
+  const isSuperAdmin = access?.role === "super_admin";
+
   if (hasServiceKey) {
     const db = createClient();
     const { count, error } = await db.from("players_directory").select("id", { count: "exact", head: true });
     if (error) tableMissing = true;
     else total = count ?? 0;
+
+    if (!tableMissing) {
+      // Οι νέες στήλες και το ιστορικό δημιουργούνται από το setup_players.sql
+      const probe = await db.from("players_directory").select("sex_eso").limit(1);
+      esoColumnsMissing = !!probe.error;
+      const { data } = await db
+        .from("eso_imports")
+        .select("list_date, list_name, applied_at, inserted, updated")
+        .order("applied_at", { ascending: false })
+        .limit(1);
+      lastImport = ((data ?? [])[0] as LastImport | undefined) ?? null;
+    }
   }
 
   return (
@@ -61,6 +80,16 @@ export default async function DirectoryPage() {
           )}
         </div>
       )}
+
+      {hasServiceKey && !tableMissing && isSuperAdmin && esoColumnsMissing && (
+        <div className="bg-card border border-red-400/40 rounded-xl p-4 text-sm">
+          <div className="font-semibold text-red-400 mb-1">Χρειάζεται ενημέρωση της βάσης</div>
+          Για την ενημέρωση από λίστα ΕΣΟ, τρέξτε ξανά το <code>supabase/setup_players.sql</code> στο SQL Editor του
+          Supabase του teamchamp (προσθέτει τις νέες στήλες, δεν σβήνει δεδομένα) και ανανεώστε τη σελίδα.
+        </div>
+      )}
+
+      {hasServiceKey && !tableMissing && isSuperAdmin && !esoColumnsMissing && <EsoImport lastImport={lastImport} />}
 
       {hasServiceKey && total !== null && total > 0 && (
         <div className="flex flex-col gap-3">

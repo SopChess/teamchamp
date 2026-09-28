@@ -1,10 +1,23 @@
 import { createClient } from "@/lib/supabase/server";
 import {
-  DIRECTORY_SELECT, SEARCH_LIMIT, normalizeQuery, sameAthlete,
+  DIRECTORY_SELECT, DIRECTORY_SELECT_LEGACY, SEARCH_LIMIT, normalizeQuery, sameAthlete,
   type AthleteIdentity, type DirectoryRow,
 } from "./directory";
 
 type Db = ReturnType<typeof createClient>;
+
+/**
+ * Εκτελεί ένα ερώτημα στον κατάλογο με τις στήλες της ΕΣΟ. Αν η βάση δεν έχει ακόμα αυτές τις
+ * στήλες (ο κώδικας ανέβηκε πριν ξανατρέξει το setup_players.sql), επαναλαμβάνει χωρίς αυτές,
+ * ώστε η αναζήτηση να μη σταματήσει.
+ */
+async function withDirectoryColumns<T extends { error: { code?: string } | null }>(
+  run: (columns: string) => PromiseLike<T>
+): Promise<T> {
+  const first = await run(DIRECTORY_SELECT);
+  if (first.error?.code === "42703") return run(DIRECTORY_SELECT_LEGACY); // 42703 = η στήλη δεν υπάρχει
+  return first;
+}
 
 /**
  * Αναζήτηση στον κατάλογο: επώνυμο (τουλάχιστον 2 γράμματα) και προαιρετικά όνομα,
@@ -20,35 +33,37 @@ export async function searchDirectoryRows(db: Db, epithetoRaw: string, onomaRaw:
   // Αναζήτηση στα κλειδιά epitheto_key/onoma_key (κεφαλαία, χωρίς τόνους, υπολογισμένα από
   // τη βάση) ώστε να βρίσκονται και εγγραφές που στην πηγή έχουν τόνο ή πεζά. Ο όρος έχει
   // ήδη καθαριστεί από χαρακτήρες με ειδική σημασία (%, _, \\).
-  let q = db.from("players_directory").select(DIRECTORY_SELECT).like("epitheto_key", `%${epitheto}%`);
-  if (onoma.length >= 2) q = q.like("onoma_key", `%${onoma}%`);
-  const { data, error } = await q.order("epitheto_key").order("onoma_key").limit(SEARCH_LIMIT);
+  const { data, error } = await withDirectoryColumns((columns) => {
+    let q = db.from("players_directory").select(columns).like("epitheto_key", `%${epitheto}%`);
+    if (onoma.length >= 2) q = q.like("onoma_key", `%${onoma}%`);
+    return q.order("epitheto_key").order("onoma_key").limit(SEARCH_LIMIT);
+  });
   if (error) {
     console.error("players_directory search error:", error.message);
     return [];
   }
-  return (data ?? []) as DirectoryRow[];
+  return (data ?? []) as unknown as DirectoryRow[];
 }
 
 /** Αναζήτηση με ΑΜ ΕΣΟ ή FIDE ID (μόνο ψηφία), όπως στο SopRegSB. */
 export async function findDirectoryRowByNumber(db: Db, raw: string): Promise<DirectoryRow | null> {
   const idnum = (raw ?? "").replace(/\D/g, "");
   if (!idnum) return null;
-  const { data, error } = await db
-    .from("players_directory")
-    .select(DIRECTORY_SELECT)
-    .or(`eso_id.eq.${idnum},fide_id.eq.${idnum}`)
-    .limit(1);
+  const { data, error } = await withDirectoryColumns((columns) =>
+    db.from("players_directory").select(columns).or(`eso_id.eq.${idnum},fide_id.eq.${idnum}`).limit(1)
+  );
   if (error) {
     console.error("players_directory lookup error:", error.message);
     return null;
   }
-  return ((data ?? [])[0] as DirectoryRow | undefined) ?? null;
+  return (((data ?? []) as unknown as DirectoryRow[])[0]) ?? null;
 }
 
 export async function findDirectoryRowById(db: Db, id: string): Promise<DirectoryRow | null> {
-  const { data } = await db.from("players_directory").select(DIRECTORY_SELECT).eq("id", id).maybeSingle();
-  return (data as DirectoryRow | null) ?? null;
+  const { data } = await withDirectoryColumns((columns) =>
+    db.from("players_directory").select(columns).eq("id", id).maybeSingle()
+  );
+  return (data as unknown as DirectoryRow | null) ?? null;
 }
 
 /**

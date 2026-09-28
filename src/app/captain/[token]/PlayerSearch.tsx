@@ -226,6 +226,9 @@ export default function PlayerSearch({ search, searchByNumber, add, available = 
               ))}
             </div>
             <p className="text-xs text-muted">Το φύλο καθορίζει σε ποιες σκακιέρες μπορεί να αγωνιστεί ο αθλητής.</p>
+            {selected.sexEso === "F" && (
+              <p className="text-xs text-gold">Στη λίστα ΕΣΟ ο αθλητής σημειώνεται ως Γυναίκα. Η επιλογή είναι δική σας.</p>
+            )}
           </fieldset>
 
           <div className="grid grid-cols-2 gap-2">

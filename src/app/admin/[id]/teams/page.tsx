@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createTeam } from "./actions";
 import Link from "next/link";
+import { genderMismatches, type AthleteGender } from "@/lib/eso/genderCheck";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,6 +33,40 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
     .select("id, name")
     .order("name");
 
+  // Έλεγχος φύλου με τη λίστα ΕΣΟ (μόνο για αθλητές που επιλέχθηκαν από τον κατάλογο)
+  const teamName = new Map<string, string>();
+  for (const t of teams ?? []) {
+    const raw = (t as unknown as { clubs_schools: { name: string } | { name: string }[] | null }).clubs_schools;
+    teamName.set(t.id, (Array.isArray(raw) ? raw[0]?.name : raw?.name) ?? "Ομάδα");
+  }
+  const teamIds = [...teamName.keys()];
+  let mismatches: ReturnType<typeof genderMismatches> = [];
+  if (teamIds.length > 0) {
+    const { data: entries } = await supabase.from("roster_entries").select("team_id, player_id").in("team_id", teamIds);
+    const playerIds = (entries ?? []).map((e) => e.player_id);
+    const { data: players } = playerIds.length
+      ? await supabase.from("players").select("id, first_name, last_name, gender, directory_id").in("id", playerIds)
+      : { data: [] as { id: string; first_name: string; last_name: string; gender: string | null; directory_id: string | null }[] };
+    const dirIds = [...new Set((players ?? []).map((p) => p.directory_id).filter((x): x is string => !!x))];
+    const sexByDir = new Map<string, string | null>();
+    for (let i = 0; i < dirIds.length; i += 200) {
+      const { data: dir } = await supabase.from("players_directory").select("id, sex_eso").in("id", dirIds.slice(i, i + 200));
+      for (const d of (dir ?? []) as { id: string; sex_eso: string | null }[]) sexByDir.set(d.id, d.sex_eso ?? null);
+    }
+    const { count: imports } = await supabase.from("eso_imports").select("id", { count: "exact", head: true });
+    const athletes: AthleteGender[] = (entries ?? []).flatMap((e) => {
+      const p = (players ?? []).find((x) => x.id === e.player_id);
+      if (!p) return [];
+      return [{
+        team: teamName.get(e.team_id) ?? "Ομάδα",
+        name: `${p.last_name} ${p.first_name}`,
+        declared: p.gender === "M" || p.gender === "F" ? p.gender : null,
+        directoryId: p.directory_id,
+      }];
+    });
+    mismatches = genderMismatches(athletes, sexByDir, (imports ?? 0) > 0);
+  }
+
   const boundCreate = createTeam.bind(null, params.id);
 
   return (
@@ -42,6 +77,23 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
         </Link>
         <h1 className="font-serif font-bold text-2xl mt-2">Ομάδες</h1>
       </div>
+
+      {mismatches.length > 0 && (
+        <div className="bg-card border border-gold/40 rounded-xl p-4 flex flex-col gap-2">
+          <div className="text-xs uppercase tracking-wide text-gold">Έλεγχος φύλου με τη λίστα ΕΣΟ</div>
+          <p className="text-xs text-muted">
+            Το φύλο το επιλέγει ο υπεύθυνος κάθε ομάδας. Παρακάτω φαίνονται οι περιπτώσεις που διαφέρει από την ένδειξη
+            της ΕΣΟ και αξίζει έλεγχος πριν κριθεί η σύνθεση.
+          </p>
+          <ul className="text-sm flex flex-col gap-1">
+            {mismatches.map((m, i) => (
+              <li key={i} className={m.severity === "strong" ? "text-red-400" : "text-muted"}>
+                {m.team} · {m.name}: {m.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {(teams ?? []).map((t) => {
