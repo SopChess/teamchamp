@@ -1,49 +1,38 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { ACCESS_COOKIE, isPathAllowed, type Access } from "@/lib/access";
 
 /**
- * Guards magic-link roles (admin, referee). The /captain/[token] portal is
- * intentionally NOT guarded here — it authenticates via its own URL token,
- * not a Supabase session (see §2 of the architecture doc).
+ * Φρουρός πρόσβασης για /admin και /referee. Ελέγχει το μόνιμο cookie
+ * (προσωπικό token) ΣΕ ΚΑΘΕ αίτημα απέναντι στη βάση, μέσω της συνάρτησης
+ * verify_access_token — έτσι μια ανάκληση link (active=false) κόβει την
+ * πρόσβαση αμέσως. Καλύπτει και τα server actions (γίνονται POST στο ίδιο path).
+ *
+ * Το /captain/[token] ΔΕΝ περνά από εδώ — έχει δικό του token στο URL.
  */
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  const deny = () => {
+    const url = new URL("/login", request.url);
+    url.searchParams.set("error", "denied");
+    return NextResponse.redirect(url);
+  };
 
-  const supabase = createServerClient(
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
+  if (!token) return deny();
+
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: { flowType: "pkce" },
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          response.cookies.set({ name, value: "", ...options });
-        },
-      },
-    }
+    { auth: { persistSession: false } }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data, error } = await supabase.rpc("verify_access_token", { p_token: token });
+  const access = (Array.isArray(data) ? data[0] : data) as Access | undefined;
 
-  const protectedPrefixes = ["/admin", "/referee"];
-  const needsAuth = protectedPrefixes.some((p) =>
-    request.nextUrl.pathname.startsWith(p)
-  );
+  if (error || !access) return deny();
+  if (!isPathAllowed(access, request.nextUrl.pathname)) return deny();
 
-  if (needsAuth && !session) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
