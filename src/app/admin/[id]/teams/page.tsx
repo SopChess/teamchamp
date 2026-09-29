@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { createTeam, deleteTeam } from "./actions";
+import { createTeam, deleteTeam, setEntryFeeStatus } from "./actions";
+import { ENTRY_FEE_STATUS_LABEL, type EntryFeeStatus } from "@/lib/attendance/attendance";
+import TeamCertificateLink from "./TeamCertificateLink";
 import Link from "next/link";
 import { genderMismatches, type AthleteGender } from "@/lib/eso/genderCheck";
 import {
@@ -34,7 +36,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, status, roster_lock_deadline, captain_access_token, club_or_school_id, team_number, clubs_schools(name)")
+    .select("id, status, roster_lock_deadline, captain_access_token, club_or_school_id, team_number, clubs_schools(name), attendance_certificate_original_name, entry_fee_status, entry_fee_method")
     .eq("competition_id", params.id)
     .order("created_at", { ascending: false });
 
@@ -134,6 +136,10 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
           const captainUrl = `/captain/${t.captain_access_token}`;
           const canDelete = !pairedTeamIds.has(t.id);
           const boundDelete = deleteTeam.bind(null, params.id, t.id);
+          const feeStatus = (t.entry_fee_status && t.entry_fee_status in ENTRY_FEE_STATUS_LABEL
+            ? t.entry_fee_status
+            : "pending") as EntryFeeStatus;
+          const boundSetFee = setEntryFeeStatus.bind(null, params.id, t.id);
           return (
             <div key={t.id} className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -148,6 +154,30 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
               <div className="text-xs">
                 Portal Αρχηγού:{" "}
                 <span className="text-gold break-all">{captainUrl}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted">Βεβαίωση:</span>
+                {t.attendance_certificate_original_name ? (
+                  <TeamCertificateLink teamId={t.id} name={t.attendance_certificate_original_name} />
+                ) : (
+                  <span className="text-muted">δεν έχει ανέβει</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted">Παράβολο:</span>
+                <form action={async (fd: FormData) => { "use server"; await boundSetFee(String(fd.get("status"))); }} className="flex items-center gap-1.5">
+                  <select
+                    name="status"
+                    defaultValue={feeStatus}
+                    className="bg-panel border border-cardBorder rounded px-2 py-1 text-xs"
+                  >
+                    {(Object.keys(ENTRY_FEE_STATUS_LABEL) as EntryFeeStatus[]).map((s) => (
+                      <option key={s} value={s}>{ENTRY_FEE_STATUS_LABEL[s]}</option>
+                    ))}
+                  </select>
+                  <button type="submit" className="text-gold hover:underline">Ενημέρωση</button>
+                </form>
+                {t.entry_fee_method && <span className="text-muted">· {t.entry_fee_method}</span>}
               </div>
               <div className="flex justify-end">
                 {canDelete ? (

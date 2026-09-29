@@ -9,6 +9,9 @@ import {
   nextTeamNumber,
   type AudienceType,
 } from "@/lib/teams/teams";
+import { isEntryFeeStatus } from "@/lib/attendance/attendance";
+
+const CERTIFICATE_BUCKET = "attendance-certificates";
 
 /**
  * Δημιουργία ομάδας. Η συμπεριφορά εξαρτάται από το audience_type της
@@ -124,4 +127,26 @@ export async function deleteTeam(competitionId: string, teamId: string) {
   }
 
   revalidatePath(`/admin/${competitionId}/teams`);
+}
+
+/** Μόνο ο διαχειριστής/υπεύθυνος πρωταθλήματος ορίζει την κατάσταση παραβόλου — ο αρχηγός δηλώνει μόνο τον τρόπο πληρωμής. */
+export async function setEntryFeeStatus(competitionId: string, teamId: string, status: string) {
+  if (!isEntryFeeStatus(status)) throw new Error("Μη έγκυρη κατάσταση παραβόλου.");
+  const supabase = createClient();
+  const { error } = await supabase.from("teams").update({ entry_fee_status: status }).eq("id", teamId);
+  if (error) throw new Error(`Αποτυχία ενημέρωσης: ${error.message}`);
+  revalidatePath(`/admin/${competitionId}/teams`);
+}
+
+/** Προσωρινό link λήψης της βεβαίωσης φοίτησης, για τον admin/υπεύθυνο πρωταθλήματος. */
+export async function getCertificateUrlForAdmin(teamId: string): Promise<string | null> {
+  const supabase = createClient();
+  const { data: row } = await supabase
+    .from("teams")
+    .select("attendance_certificate_path")
+    .eq("id", teamId)
+    .maybeSingle();
+  if (!row?.attendance_certificate_path) return null;
+  const { data } = await supabase.storage.from(CERTIFICATE_BUCKET).createSignedUrl(row.attendance_certificate_path, 600);
+  return data?.signedUrl ?? null;
 }

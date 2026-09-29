@@ -10,7 +10,11 @@ import {
   searchDirectory,
   searchDirectoryByNumber,
   addDirectoryPlayerToRoster,
+  uploadAttendanceCertificate,
+  setEntryFeeMethod,
+  getCertificateUrl,
 } from "./actions";
+import { ENTRY_FEE_STATUS_LABEL, isEntryFeeStatus } from "@/lib/attendance/attendance";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
 import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
@@ -40,7 +44,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
   const { data: team } = await supabase
     .from("teams")
     .select(
-      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name)"
+      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method"
     )
     .eq("captain_access_token", params.token)
     .maybeSingle();
@@ -68,6 +72,10 @@ export default async function CaptainPortal({ params }: { params: { token: strin
     .maybeSingle();
 
   const round = await loadCaptainRound(team.id, team.competition_id);
+  const certificateUrl = team.attendance_certificate_original_name ? await getCertificateUrl(params.token) : null;
+  const feeStatus = isEntryFeeStatus(team.entry_fee_status) ? team.entry_fee_status : "pending";
+  const boundUploadCertificate = uploadAttendanceCertificate.bind(null, params.token);
+  const boundEntryFeeMethod = setEntryFeeMethod.bind(null, params.token);
   const roundRules = round.kind === "play" && !round.composition ? await loadRules(supabase, team.competition_id) : null;
   const roundRoster = roundRules ? await loadRoster(supabase, team.id) : null;
   const initialAssignments =
@@ -329,6 +337,69 @@ export default async function CaptainPortal({ params }: { params: { token: strin
             Αποθήκευση Στοιχείων Αρχηγού
           </button>
         </form>
+      </div>
+
+      <div>
+        <div className="text-xs uppercase tracking-wide text-muted mb-2">Βεβαίωση Φοίτησης</div>
+        <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+          {team.attendance_certificate_original_name ? (
+            <p className="text-sm">
+              Έχει ανέβει: <span className="text-muted">{team.attendance_certificate_original_name}</span>
+              {team.attendance_certificate_uploaded_at && (
+                <span className="text-muted">
+                  {" "}
+                  ({new Date(team.attendance_certificate_uploaded_at).toLocaleDateString("el-GR")})
+                </span>
+              )}
+              {certificateUrl && (
+                <>
+                  {" — "}
+                  <a href={certificateUrl} className="text-gold underline" target="_blank" rel="noreferrer">
+                    Προβολή
+                  </a>
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-muted">Δεν έχει ανέβει ακόμα βεβαίωση.</p>
+          )}
+          <form action={boundUploadCertificate} className="flex gap-2">
+            <input
+              name="file"
+              type="file"
+              accept="application/pdf,image/jpeg,image/png"
+              required
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+            <button type="submit" className="bg-panel border border-cardBorder rounded-lg px-4 py-2 text-sm whitespace-nowrap">
+              {team.attendance_certificate_original_name ? "Αντικατάσταση" : "Ανέβασμα"}
+            </button>
+          </form>
+          <p className="text-xs text-muted">PDF ή εικόνα (JPG/PNG), έως 8 MB.</p>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs uppercase tracking-wide text-muted mb-2">Παράβολο Συμμετοχής</div>
+        <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+          <p className="text-sm">
+            Κατάσταση: <span className="text-gold">{ENTRY_FEE_STATUS_LABEL[feeStatus]}</span>
+          </p>
+          <form action={boundEntryFeeMethod} className="flex gap-2">
+            <input
+              name="entry_fee_method"
+              defaultValue={team.entry_fee_method ?? ""}
+              placeholder="Τρόπος πληρωμής (π.χ. κατάθεση, μετρητά)"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+            <button type="submit" className="bg-panel border border-cardBorder rounded-lg px-4 py-2 text-sm whitespace-nowrap">
+              Αποθήκευση
+            </button>
+          </form>
+          <p className="text-xs text-muted">
+            Η κατάσταση ενημερώνεται από τη διοργάνωση αφού επιβεβαιωθεί η πληρωμή.
+          </p>
+        </div>
       </div>
 
       {editable && (

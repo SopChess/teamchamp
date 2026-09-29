@@ -14,6 +14,9 @@ import {
   findAthleteInCompetition, findDirectoryRowById, findDirectoryRowByNumber,
   nextDeclaredOrder, searchDirectoryRows,
 } from "@/lib/players/server";
+import { certificateStoragePath, validateCertificateFile } from "@/lib/attendance/attendance";
+
+const CERTIFICATE_BUCKET = "attendance-certificates";
 
 /**
  * Κάθε action εδώ επαληθεύει το token ΞΑΝΑ από την αρχή — δεν εμπιστευόμαστε
@@ -453,4 +456,84 @@ export async function submitRoundComposition(
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Άγνωστο σφάλμα." };
   }
+}
+
+/**
+ * Ανέβασμα βεβαίωσης φοίτησης. Ιδιωτικός χώρος αποθήκευσης — η πρόσβαση
+ * γίνεται πάντα μέσω server (service key, βλ. supabase/setup_attendance_fee.sql),
+ * ποτέ απευθείας από τον browser. Το προηγούμενο αρχείο, αν υπάρχει,
+ * αντικαθίσταται (δεν μένει διπλό αρχείο στο storage).
+ */
+export async function uploadAttendanceCertificate(token: string, formData: FormData): Promise<void> {
+  const team = await getTeamByToken(token);
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("Επιλέξτε αρχείο.");
+
+  const error = validateCertificateFile({ name: file.name, type: file.type, size: file.size });
+  if (error) throw new Error(error);
+
+  const supabase = createClient();
+  const path = certificateStoragePath(team.id, file.name);
+
+  const { error: uploadError } = await supabase.storage
+    .from(CERTIFICATE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (uploadError) {
+    throw new Error(`Αποτυχία ανεβάσματος: ${uploadError.message}`);
+  }
+
+  const { data: current } = await supabase
+    .from("teams")
+    .select("attendance_certificate_path")
+    .eq("id", team.id)
+    .maybeSingle();
+  const previousPath = current?.attendance_certificate_path ?? null;
+
+  const { error: dbError } = await supabase
+    .from("teams")
+    .update({
+      attendance_certificate_path: path,
+      attendance_certificate_original_name: file.name,
+      attendance_certificate_uploaded_at: new Date().toISOString(),
+    })
+    .eq("id", team.id);
+  if (dbError) {
+    await supabase.storage.from(CERTIFICATE_BUCKET).remove([path]); // καθαρισμός ορφανού αρχείου
+    throw new Error(`Αποτυχία αποθήκευσης: ${dbError.message}`);
+  }
+
+  if (previousPath && previousPath !== path) {
+    await supabase.storage.from(CERTIFICATE_BUCKET).remove([previousPath]);
+  }
+
+  revalidatePath(`/captain/${token}`);
+}
+
+/** Ο τρόπος πληρωμής που δηλώνει ο αρχηγός — η ίδια η κατάσταση (πληρώθηκε/απαλλαγή) την ορίζει μόνο ο διαχειριστής. */
+export async function setEntryFeeMethod(token: string, formData: FormData): Promise<void> {
+  const team = await getTeamByToken(token);
+  const method = String(formData.get("entry_fee_method") ?? "").trim().slice(0, 200);
+
+  const supabase = createClient();
+  const { error } = await supabase.from("teams").update({ entry_fee_method: method || null }).eq("id", team.id);
+  if (error) throw new Error(`Αποτυχία αποθήκευσης: ${error.message}`);
+
+  revalidatePath(`/captain/${token}`);
+}
+
+/** Προσωρινό link λήψης της βεβαίωσης (λήγει σε 10 λεπτά) — δημιουργείται μόνο κατόπιν αιτήματος με έγκυρο token. */
+export async function getCertificateUrl(token: string): Promise<string | null> {
+  const team = await getTeamByToken(token);
+  const supabase = createClient();
+  const { data: row } = await supabase
+    .from("teams")
+    .select("attendance_certificate_path")
+    .eq("id", team.id)
+    .maybeSingle();
+  if (!row?.attendance_certificate_path) return null;
+
+  const { data } = await supabase.storage
+    .from(CERTIFICATE_BUCKET)
+    .createSignedUrl(row.attendance_certificate_path, 600);
+  return data?.signedUrl ?? null;
 }
