@@ -1,6 +1,6 @@
 import { getCurrentAccess, canScoreCompetition } from "@/lib/access.server";
 import { resolveScan } from "@/lib/rounds/scan";
-import { recordBoardResult } from "./actions";
+import { recordBoardResult, getResultHistory } from "./actions";
 import type { BoardResult } from "@/lib/standings/standings";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 export default async function ScanPage({ params }: { params: { token: string } }) {
   const [scan, access] = await Promise.all([resolveScan(params.token), getCurrentAccess()]);
+  const history = scan.kind === "board" ? await getResultHistory(params.token) : [];
 
   if (scan.kind === "unknown_token") {
     return (
@@ -143,6 +144,22 @@ export default async function ScanPage({ params }: { params: { token: string } }
       <p className="text-xs text-muted">
         Μπορείτε να διορθώσετε ένα αποτέλεσμα πατώντας άλλο κουμπί. Το επιλεγμένο εμφανίζεται με χρυσό χρώμα.
       </p>
+
+      {history.length > 0 && (
+        <details className="text-xs text-muted">
+          <summary className="cursor-pointer">Ιστορικό καταχωρήσεων ({history.length})</summary>
+          <ul className="mt-2 flex flex-col gap-1">
+            {history.map((h, i) => (
+              <li key={i}>
+                {h.old_result ? `${RESULT_LABEL[h.old_result as BoardResult] ?? h.old_result} → ` : "Πρώτη καταχώρηση: "}
+                <span className="text-foreground">{RESULT_LABEL[h.new_result as BoardResult] ?? h.new_result}</span>
+                {h.changed_by ? ` · ${h.changed_by}` : ""} ·{" "}
+                {new Date(h.changed_at).toLocaleString("el-GR", { dateStyle: "short", timeStyle: "short" })}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </Shell>
   );
 }

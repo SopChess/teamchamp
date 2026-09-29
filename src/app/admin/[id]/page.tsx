@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { saveRosterRules, saveScoringRules, updateCompetition } from "../actions";
 import { AUDIENCE_LABELS } from "@/lib/teams/teams";
+import RosterRulesBuilder from "../RosterRulesBuilder";
 import { TIEBREAK_LABELS, DEFAULT_TIEBREAKS } from "@/lib/standings/standings";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import Link from "next/link";
@@ -173,15 +174,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
           Ένας παίκτης ανά κατηγορία (fixed_category)
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          board_rules (JSON — προσωρινή επεξεργασία· dynamic builder έρχεται σε επόμενο πέρασμα)
-          <textarea
-            name="board_rules_json"
-            rows={10}
-            defaultValue={JSON.stringify(rosterRules?.board_rules ?? [], null, 2)}
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 font-mono text-xs"
-          />
-        </label>
+        <RosterRulesBuilder initial={rosterRules?.board_rules ?? []} />
 
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm">
           Αποθήκευση Κανόνων Σύνθεσης
