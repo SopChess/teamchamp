@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createCompetition } from "./actions";
+import { AUDIENCE_LABELS } from "@/lib/teams/teams";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,24 @@ export default async function AdminHome() {
           <input name="starts_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
           <input name="ends_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
         </div>
+        <label className="flex flex-col gap-1 text-sm">
+          Σε ποιους απευθύνεται
+          <select name="audience_type" defaultValue="eso_club" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
+            {(Object.entries(AUDIENCE_LABELS) as [string, string][]).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
+          <input
+            name="max_teams_per_club"
+            type="number"
+            min={1}
+            defaultValue={1}
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+          />
+        </label>
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
           Δημιουργία
         </button>

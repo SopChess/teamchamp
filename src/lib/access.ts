@@ -15,9 +15,9 @@ const UUID_PATH = /^\/admin\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0
  * Καθαρή συνάρτηση: επιτρέπεται ο ρόλος αυτός να ανοίξει αυτό το path;
  *
  * - super_admin: όλο το /admin και το /referee
- * - tournament_admin: /admin (αρχική) και /admin/<δική του διοργάνωση>/...
- *   (ΟΧΙ /admin/clubs και ΟΧΙ άλλες διοργανώσεις — να αποφασιστεί αργότερα
- *   αν χρειάζεται πρόσβαση στους Συλλόγους)
+ * - tournament_admin: /admin (αρχική), /admin/clubs (ΜΟΝΟ ανάγνωση — η εγγραφή
+ *   ελέγχεται ξεχωριστά μέσα στις ίδιες τις ενέργειες, βλ. admin/clubs/actions.ts)
+ *   και /admin/<δική του διοργάνωση>/...
  * - referee: /referee και τη σάρωση QR (/r/...)
  * - tournament_admin: επιπλέον τη σάρωση QR (/r/...)
  */
@@ -35,7 +35,7 @@ export function isPathAllowed(access: Access, path: string): boolean {
     case "tournament_admin": {
       if (inScan) return true;
       if (!inAdmin) return false;
-      if (path === "/admin") return true;
+      if (path === "/admin" || path === "/admin/clubs") return true;
       const match = path.match(UUID_PATH);
       if (!match) return false;
       return (access.competition_ids ?? []).includes(match[1]);

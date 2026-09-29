@@ -11,6 +11,7 @@ import {
   type StandingsMatch,
   type TiebreakKey,
 } from "@/lib/standings/standings";
+import { teamDisplayName } from "@/lib/teams/teams";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,7 +34,7 @@ export default async function ChampionshipPage({ params }: { params: { id: strin
 
   const [{ data: teams }, { data: rounds }, { data: meetings }, { data: scoring }, { data: rules }] =
     await Promise.all([
-      supabase.from("teams").select("id, clubs_schools(name)").eq("competition_id", params.id),
+      supabase.from("teams").select("id, team_number, clubs_schools(name)").eq("competition_id", params.id),
       supabase
         .from("rounds")
         .select("id, round_number, pairing_published_at")
@@ -58,8 +59,11 @@ export default async function ChampionshipPage({ params }: { params: { id: strin
     ? await supabase.from("board_results").select("pairing_id, board_number, result").in("pairing_id", pairingIds)
     : { data: [] as { pairing_id: string; board_number: number; result: string | null }[] };
 
-  const teamName = (id: string | null) =>
-    id ? clubName((teams ?? []).find((t) => t.id === id)?.clubs_schools as ClubRef) : "BYE";
+  const teamName = (id: string | null) => {
+    if (!id) return "BYE";
+    const t = (teams ?? []).find((x) => x.id === id);
+    return t ? teamDisplayName(clubName(t.clubs_schools as ClubRef), t.team_number ?? 1) : "Ομάδα";
+  };
   const defaultBoards = rules?.match_board_count ?? 4;
   const meetingOf = (id: string) => (meetings ?? []).find((m) => m.id === id);
 

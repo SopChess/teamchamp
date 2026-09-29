@@ -5,6 +5,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { TIEBREAK_LABELS, type TiebreakKey } from "@/lib/standings/standings";
+import type { AudienceType } from "@/lib/teams/teams";
+
+const AUDIENCE_TYPES: AudienceType[] = ["school", "eso_club", "free_team"];
 
 export async function createCompetition(formData: FormData) {
   const supabase = createClient();
@@ -15,6 +18,11 @@ export async function createCompetition(formData: FormData) {
   const startsOn = String(formData.get("starts_on") ?? "") || null;
   const endsOn = String(formData.get("ends_on") ?? "") || null;
   const venue = String(formData.get("venue") ?? "").trim() || null;
+  const audienceTypeRaw = String(formData.get("audience_type") ?? "eso_club");
+  const audienceType: AudienceType = AUDIENCE_TYPES.includes(audienceTypeRaw as AudienceType)
+    ? (audienceTypeRaw as AudienceType)
+    : "eso_club";
+  const maxTeamsPerClub = Math.max(1, Number(formData.get("max_teams_per_club") ?? 1) || 1);
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -29,6 +37,8 @@ export async function createCompetition(formData: FormData) {
       starts_on: startsOn,
       ends_on: endsOn,
       venue,
+      audience_type: audienceType,
+      max_teams_per_club: maxTeamsPerClub,
     })
     .select("id")
     .single();
@@ -39,6 +49,43 @@ export async function createCompetition(formData: FormData) {
 
   revalidatePath("/admin");
   redirect(`/admin/${data.id}`);
+}
+
+/** Επεξεργασία στοιχείων υπάρχουσας διοργάνωσης. */
+export async function updateCompetition(competitionId: string, formData: FormData) {
+  const supabase = createClient();
+
+  const name = String(formData.get("name") ?? "").trim();
+  const startsOn = String(formData.get("starts_on") ?? "") || null;
+  const endsOn = String(formData.get("ends_on") ?? "") || null;
+  const venue = String(formData.get("venue") ?? "").trim() || null;
+  const audienceTypeRaw = String(formData.get("audience_type") ?? "eso_club");
+  const audienceType: AudienceType = AUDIENCE_TYPES.includes(audienceTypeRaw as AudienceType)
+    ? (audienceTypeRaw as AudienceType)
+    : "eso_club";
+  const maxTeamsPerClub = Math.max(1, Number(formData.get("max_teams_per_club") ?? 1) || 1);
+
+  if (!name) {
+    throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
+  }
+
+  const { error } = await supabase
+    .from("competitions")
+    .update({
+      name,
+      starts_on: startsOn,
+      ends_on: endsOn,
+      venue,
+      audience_type: audienceType,
+      max_teams_per_club: maxTeamsPerClub,
+    })
+    .eq("id", competitionId);
+
+  if (error) {
+    throw new Error(`Αποτυχία ενημέρωσης διοργάνωσης: ${error.message}`);
+  }
+
+  revalidatePath(`/admin/${competitionId}`);
 }
 
 export async function saveRosterRules(competitionId: string, formData: FormData) {

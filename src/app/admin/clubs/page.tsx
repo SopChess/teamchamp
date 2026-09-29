@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentAccess } from "@/lib/access.server";
 import { createClubOrSchool } from "./actions";
 import Link from "next/link";
 
@@ -7,9 +8,12 @@ export const revalidate = 0;
 
 export default async function ClubsPage() {
   const supabase = createClient();
+  const access = await getCurrentAccess();
+  const canEdit = access?.role === "super_admin";
+
   const { data: clubs } = await supabase
     .from("clubs_schools")
-    .select("id, name, type, contact_email, contact_phone")
+    .select("id, name, type, eso_code, contact_email, contact_phone")
     .order("name");
 
   return (
@@ -19,6 +23,9 @@ export default async function ClubsPage() {
           ← Διοργανώσεις
         </Link>
         <h1 className="font-serif font-bold text-2xl mt-2">Σύλλογοι &amp; Σχολεία</h1>
+        {!canEdit && (
+          <p className="text-xs text-muted mt-1">Προβολή μόνο — η προσθήκη επιτρέπεται μόνο στον διαχειριστή.</p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -31,6 +38,7 @@ export default async function ClubsPage() {
               <div className="font-semibold">{c.name}</div>
               <div className="text-xs text-muted mt-0.5">
                 {c.type === "club" ? "Σύλλογος" : "Σχολείο"}
+                {c.eso_code ? ` · Κωδικός ΕΣΟ ${c.eso_code}` : ""}
                 {c.contact_email ? ` · ${c.contact_email}` : ""}
                 {c.contact_phone ? ` · ${c.contact_phone}` : ""}
               </div>
@@ -42,35 +50,44 @@ export default async function ClubsPage() {
         )}
       </div>
 
-      <form action={createClubOrSchool} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
-        <div className="text-xs uppercase tracking-wide text-muted">Νέος Σύλλογος/Σχολείο</div>
-        <input
-          name="name"
-          required
-          placeholder="π.χ. Σ.Ο. ΠΟΛΙΧΝΗΣ (ΕΛΛΗΝΙΚΑ ΚΕΦΑΛΑΙΑ)"
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm uppercase"
-        />
-        <select name="type" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
-          <option value="club">Σύλλογος</option>
-          <option value="school">Σχολείο</option>
-        </select>
-        <div className="flex gap-3">
+      {canEdit && (
+        <form action={createClubOrSchool} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+          <div className="text-xs uppercase tracking-wide text-muted">Νέος Σύλλογος/Σχολείο</div>
           <input
-            name="contact_email"
-            type="email"
-            placeholder="email επικοινωνίας"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            name="name"
+            required
+            placeholder="π.χ. Σ.Ο. ΠΟΛΙΧΝΗΣ (ΕΛΛΗΝΙΚΑ ΚΕΦΑΛΑΙΑ)"
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm uppercase"
           />
-          <input
-            name="contact_phone"
-            placeholder="τηλέφωνο"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-          />
-        </div>
-        <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
-          Δημιουργία
-        </button>
-      </form>
+          <div className="flex gap-3">
+            <select name="type" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1">
+              <option value="club">Σύλλογος</option>
+              <option value="school">Σχολείο</option>
+            </select>
+            <input
+              name="eso_code"
+              placeholder="Κωδικός ΕΣΟ (προαιρετικό)"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+          </div>
+          <div className="flex gap-3">
+            <input
+              name="contact_email"
+              type="email"
+              placeholder="email επικοινωνίας"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+            <input
+              name="contact_phone"
+              placeholder="τηλέφωνο"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+          </div>
+          <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
+            Δημιουργία
+          </button>
+        </form>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Player } from "@/lib/rosterRules/types";
 import type { BoardResult } from "@/lib/standings/standings";
 import { finalizeExpiredCompositions, loadRoster } from "./server";
+import { teamDisplayName } from "@/lib/teams/teams";
 
 export interface ScanSide {
   teamId: string;
@@ -79,8 +80,9 @@ export async function resolveScan(qrToken: string): Promise<ScanState> {
   const pairing = pairings.find((p) => p.round_id === round.id)!;
 
   const teamName = async (teamId: string) => {
-    const { data } = await db.from("teams").select("id, clubs_schools(name)").eq("id", teamId).maybeSingle();
-    return one(data?.clubs_schools as ClubRef)?.name ?? "Ομάδα";
+    const { data } = await db.from("teams").select("id, team_number, clubs_schools(name)").eq("id", teamId).maybeSingle();
+    const clubName = one(data?.clubs_schools as ClubRef)?.name;
+    return clubName ? teamDisplayName(clubName, (data?.team_number as number) ?? 1) : "Ομάδα";
   };
 
   if (!pairing.team_b_id) {

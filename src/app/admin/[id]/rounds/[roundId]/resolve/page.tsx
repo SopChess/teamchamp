@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveTeamMapping } from "../../actions";
 import { normalizeTeamName, type ParsedPairing } from "@/lib/swissImport/parsePairings";
+import { teamDisplayName } from "@/lib/teams/teams";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -32,7 +33,7 @@ export default async function ResolveMappingPage({
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, clubs_schools(name)")
+    .select("id, team_number, clubs_schools(name)")
     .eq("competition_id", params.id);
 
   const { data: aliases } = await supabase
@@ -41,7 +42,8 @@ export default async function ResolveMappingPage({
     .eq("competition_id", params.id);
 
   const knownNames = new Set<string>();
-  for (const t of teams ?? []) knownNames.add(normalizeTeamName(clubName(t.clubs_schools as ClubRef)));
+  for (const t of teams ?? [])
+    knownNames.add(normalizeTeamName(teamDisplayName(clubName(t.clubs_schools as ClubRef), t.team_number ?? 1)));
   for (const a of aliases ?? []) knownNames.add(a.excel_name);
 
   const unresolved: string[] = [];
@@ -89,7 +91,7 @@ export default async function ResolveMappingPage({
                 <option value="">— Επιλέξτε ομάδα —</option>
                 {(teams ?? []).map((t) => (
                   <option key={t.id} value={t.id}>
-                    {clubName(t.clubs_schools as ClubRef)}
+                    {teamDisplayName(clubName(t.clubs_schools as ClubRef), t.team_number ?? 1)}
                   </option>
                 ))}
               </select>

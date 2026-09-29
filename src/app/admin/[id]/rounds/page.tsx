@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { uploadPairingsFile, extendSubmissionWindow } from "./actions";
+import { teamDisplayName } from "@/lib/teams/teams";
 import { finalizeExpiredCompositions } from "@/lib/rounds/server";
 import { submissionWindow } from "@/lib/rounds/window";
 import Link from "next/link";
@@ -35,7 +36,7 @@ export default async function RoundsPage({ params }: { params: { id: string } })
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, clubs_schools(name)")
+    .select("id, team_number, clubs_schools(name)")
     .eq("competition_id", params.id);
 
   const { data: meetings } = await supabase
@@ -73,7 +74,8 @@ export default async function RoundsPage({ params }: { params: { id: string } })
   const teamNameById = (id: string | null) => {
     if (!id) return "BYE";
     const t = (teams ?? []).find((x) => x.id === id);
-    return t ? clubName(t.clubs_schools as ClubRef) : "Ομάδα";
+    if (!t) return "Ομάδα";
+    return teamDisplayName(clubName(t.clubs_schools as ClubRef) ?? "Ομάδα", t.team_number ?? 1);
   };
 
   const meetingLabel = (id: string) =>

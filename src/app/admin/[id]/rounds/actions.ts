@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseSwissTeamPairings, normalizeTeamName, type ParsedPairing } from "@/lib/swissImport/parsePairings";
+import { teamDisplayName } from "@/lib/teams/teams";
 
 type ClubRef = { name: string } | { name: string }[] | null;
 function clubName(raw: ClubRef): string | undefined {
@@ -16,13 +17,17 @@ async function buildTeamNameMaps(competitionId: string) {
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, clubs_schools(name)")
+    .select("id, team_number, clubs_schools(name)")
     .eq("competition_id", competitionId);
 
+  // Το όνομα προς αντιστοίχιση είναι το ΥΠΟΛΟΓΙΣΜΕΝΟ εμφανιζόμενο όνομα της ομάδας
+  // (με "-2", "-3" όταν υπάρχουν πολλαπλές ομάδες του ίδιου συλλόγου, επιβεβαιωμένο),
+  // όχι το ακατέργαστο όνομα του συλλόγου — έτσι αναγνωρίζεται αυτόματα και η
+  // δεύτερη/τρίτη ομάδα, ακριβώς όπως θα εμφανιστεί στο αρχείο του Swiss-Manager.
   const nameToTeamId = new Map<string, string>();
   for (const t of teams ?? []) {
     const name = clubName(t.clubs_schools as ClubRef);
-    if (name) nameToTeamId.set(normalizeTeamName(name), t.id);
+    if (name) nameToTeamId.set(normalizeTeamName(teamDisplayName(name, t.team_number ?? 1)), t.id);
   }
 
   const { data: aliases } = await supabase

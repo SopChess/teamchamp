@@ -32,10 +32,12 @@ describe("isPathAllowed", () => {
     expect(isPathAllowed(tournamentAdmin, `/admin/${COMP_A}/rounds`)).toBe(true);
   });
 
-  it("tournament_admin δεν μπαίνει σε ξένη διοργάνωση ή στους Συλλόγους", () => {
+  it("tournament_admin δεν μπαίνει σε ξένη διοργάνωση", () => {
     expect(isPathAllowed(tournamentAdmin, `/admin/${COMP_B}`)).toBe(false);
     expect(isPathAllowed(tournamentAdmin, `/admin/${COMP_B}/meetings`)).toBe(false);
-    expect(isPathAllowed(tournamentAdmin, "/admin/clubs")).toBe(false);
+  });
+  it("tournament_admin ΒΛΕΠΕΙ το /admin/clubs (η εγγραφή μπλοκάρεται αλλού)", () => {
+    expect(isPathAllowed(tournamentAdmin, "/admin/clubs")).toBe(true);
   });
 
   it("tournament_admin δεν μπαίνει στο /referee", () => {

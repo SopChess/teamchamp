@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
 import type { Player, RosterEntry, RosterRules } from "@/lib/rosterRules/types";
 import { submissionWindow } from "./window";
+import { teamDisplayName } from "@/lib/teams/teams";
 
 type Db = ReturnType<typeof createClient>;
 
@@ -205,7 +206,7 @@ export async function loadCaptainRound(teamId: string, competitionId: string): P
     const opponentId = pairing.team_a_id === teamId ? pairing.team_b_id : pairing.team_a_id;
     const { data: opp } = await db
       .from("teams")
-      .select("id, clubs_schools(name)")
+      .select("id, team_number, clubs_schools(name)")
       .eq("id", opponentId)
       .maybeSingle();
     const club = one(opp?.clubs_schools as { name: string } | { name: string }[] | null);
@@ -253,7 +254,7 @@ export async function loadCaptainRound(teamId: string, competitionId: string): P
       kind: "play",
       roundId: round.id,
       roundNumber: round.round_number,
-      opponentName: club?.name ?? "Αντίπαλος",
+      opponentName: club?.name ? teamDisplayName(club.name, (opp?.team_number as number) ?? 1) : "Αντίπαλος",
       opponentRoster,
       composition,
       window: { endsAt: win.endsAt ? win.endsAt.toISOString() : null, open: win.open, expired: win.expired },

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { saveRosterRules, saveScoringRules } from "../actions";
+import { saveRosterRules, saveScoringRules, updateCompetition } from "../actions";
+import { AUDIENCE_LABELS } from "@/lib/teams/teams";
 import { TIEBREAK_LABELS, DEFAULT_TIEBREAKS } from "@/lib/standings/standings";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import Link from "next/link";
@@ -12,7 +13,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club")
     .eq("id", params.id)
     .single();
 
@@ -30,6 +31,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const boundSave = saveRosterRules.bind(null, params.id);
   const boundScoring = saveScoringRules.bind(null, params.id);
+  const boundUpdateCompetition = updateCompetition.bind(null, params.id);
   const savedTiebreaks: string[] =
     scoring?.tiebreak_criteria && scoring.tiebreak_criteria.length > 0
       ? scoring.tiebreak_criteria
@@ -55,6 +57,65 @@ export default async function CompetitionPage({ params }: { params: { id: string
           </Link>
         </div>
       </div>
+
+      <form action={boundUpdateCompetition} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
+        <div className="text-xs uppercase tracking-wide text-muted">Στοιχεία Διοργάνωσης</div>
+        <label className="flex flex-col gap-1 text-sm">
+          Όνομα
+          <input
+            name="name"
+            required
+            defaultValue={competition?.name ?? ""}
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Χώρος αγώνων
+          <input
+            name="venue"
+            defaultValue={competition?.venue ?? ""}
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+        <div className="flex gap-3">
+          <label className="flex flex-col gap-1 text-sm flex-1">
+            Έναρξη
+            <input name="starts_on" type="date" defaultValue={competition?.starts_on ?? ""} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm flex-1">
+            Λήξη
+            <input name="ends_on" type="date" defaultValue={competition?.ends_on ?? ""} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          </label>
+        </div>
+        <label className="flex flex-col gap-1 text-sm">
+          Σε ποιους απευθύνεται
+          <select
+            name="audience_type"
+            defaultValue={competition?.audience_type ?? "eso_club"}
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          >
+            {(Object.entries(AUDIENCE_LABELS) as [string, string][]).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <span className="text-xs text-muted">
+            Αλλαγή εδώ δεν επηρεάζει ομάδες που έχουν ήδη δηλωθεί.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
+          <input
+            name="max_teams_per_club"
+            type="number"
+            min={1}
+            defaultValue={competition?.max_teams_per_club ?? 1}
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+        <button type="submit" className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
+          Αποθήκευση Στοιχείων
+        </button>
+      </form>
 
       <form action={boundSave} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Κανόνες Σύνθεσης</div>
