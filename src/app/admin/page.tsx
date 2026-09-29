@@ -105,6 +105,32 @@ export default async function AdminHome() {
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Προκήρυξη (link, π.χ. Google Drive)
+          <input
+            name="announcement_url"
+            type="url"
+            placeholder="https://drive.google.com/..."
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Χώρος αγώνων — link Google Maps
+          <input
+            name="venue_maps_url"
+            type="url"
+            placeholder="https://maps.app.goo.gl/..."
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Προθεσμία εγγραφών
+          <input
+            name="registration_deadline"
+            type="datetime-local"
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+          />
+        </label>
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
           Δημιουργία
         </button>

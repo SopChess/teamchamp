@@ -23,6 +23,10 @@ export async function createCompetition(formData: FormData) {
     ? (audienceTypeRaw as AudienceType)
     : "eso_club";
   const maxTeamsPerClub = Math.max(1, Number(formData.get("max_teams_per_club") ?? 1) || 1);
+  const announcementUrl = String(formData.get("announcement_url") ?? "").trim() || null;
+  const venueMapsUrl = String(formData.get("venue_maps_url") ?? "").trim() || null;
+  const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
+  const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -39,6 +43,9 @@ export async function createCompetition(formData: FormData) {
       venue,
       audience_type: audienceType,
       max_teams_per_club: maxTeamsPerClub,
+      announcement_url: announcementUrl,
+      venue_maps_url: venueMapsUrl,
+      registration_deadline: registrationDeadline,
     })
     .select("id")
     .single();
@@ -64,6 +71,10 @@ export async function updateCompetition(competitionId: string, formData: FormDat
     ? (audienceTypeRaw as AudienceType)
     : "eso_club";
   const maxTeamsPerClub = Math.max(1, Number(formData.get("max_teams_per_club") ?? 1) || 1);
+  const announcementUrl = String(formData.get("announcement_url") ?? "").trim() || null;
+  const venueMapsUrl = String(formData.get("venue_maps_url") ?? "").trim() || null;
+  const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
+  const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -78,6 +89,9 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       venue,
       audience_type: audienceType,
       max_teams_per_club: maxTeamsPerClub,
+      announcement_url: announcementUrl,
+      venue_maps_url: venueMapsUrl,
+      registration_deadline: registrationDeadline,
     })
     .eq("id", competitionId);
 

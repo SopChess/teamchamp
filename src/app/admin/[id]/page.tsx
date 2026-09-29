@@ -14,7 +14,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, registration_deadline")
     .eq("id", params.id)
     .single();
 
@@ -110,6 +110,35 @@ export default async function CompetitionPage({ params }: { params: { id: string
             type="number"
             min={1}
             defaultValue={competition?.max_teams_per_club ?? 1}
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Προκήρυξη (link, π.χ. Google Drive)
+          <input
+            name="announcement_url"
+            type="url"
+            defaultValue={competition?.announcement_url ?? ""}
+            placeholder="https://drive.google.com/..."
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Χώρος αγώνων — link Google Maps
+          <input
+            name="venue_maps_url"
+            type="url"
+            defaultValue={competition?.venue_maps_url ?? ""}
+            placeholder="https://maps.app.goo.gl/..."
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Προθεσμία εγγραφών
+          <input
+            name="registration_deadline"
+            type="datetime-local"
+            defaultValue={competition?.registration_deadline ? new Date(competition.registration_deadline).toISOString().slice(0, 16) : ""}
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
