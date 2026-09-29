@@ -4,6 +4,7 @@ import { normalizeTeamName, type ParsedPairing } from "@/lib/swissImport/parsePa
 import { teamDisplayName } from "@/lib/teams/teams";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -78,7 +79,7 @@ export default async function ResolveMappingPage({
       {unresolved.length === 0 ? (
         <p className="text-sm text-good">Όλα τα ονόματα έχουν πλέον αντιστοιχία — δεν μένει τίποτα εδώ.</p>
       ) : (
-        <form action={boundResolve} className="flex flex-col gap-4">
+        <SavableForm action={boundResolve} className="flex flex-col gap-4">
           {unresolved.map((name, i) => (
             <div key={name} className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-2">
               <input type="hidden" name={`names[${i}]`} value={name} />
@@ -100,7 +101,7 @@ export default async function ResolveMappingPage({
           <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm">
             Αποθήκευση Αντιστοιχίας &amp; Ολοκλήρωση Εισαγωγής
           </button>
-        </form>
+        </SavableForm>
       )}
     </div>
   );

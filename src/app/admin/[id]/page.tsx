@@ -5,6 +5,7 @@ import RosterRulesBuilder from "../RosterRulesBuilder";
 import { TIEBREAK_LABELS, DEFAULT_TIEBREAKS } from "@/lib/standings/standings";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import Link from "next/link";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -59,7 +60,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
         </div>
       </div>
 
-      <form action={boundUpdateCompetition} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={boundUpdateCompetition} successMessage="Τα στοιχεία αποθηκεύτηκαν." className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Στοιχεία Διοργάνωσης</div>
         <label className="flex flex-col gap-1 text-sm">
           Όνομα
@@ -145,9 +146,9 @@ export default async function CompetitionPage({ params }: { params: { id: string
         <button type="submit" className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
           Αποθήκευση Στοιχείων
         </button>
-      </form>
+      </SavableForm>
 
-      <form action={boundSave} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={boundSave} successMessage="Οι κανόνες σύνθεσης αποθηκεύτηκαν." className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Κανόνες Σύνθεσης</div>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -208,9 +209,9 @@ export default async function CompetitionPage({ params }: { params: { id: string
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm">
           Αποθήκευση Κανόνων Σύνθεσης
         </button>
-      </form>
+      </SavableForm>
 
-      <form action={boundScoring} className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={boundScoring} successMessage="Η βαθμολογία αποθηκεύτηκε." className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Βαθμολογία &amp; Ισοβαθμία</div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -270,7 +271,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm">
           Αποθήκευση Βαθμολογίας
         </button>
-      </form>
+      </SavableForm>
     </div>
   );
 }

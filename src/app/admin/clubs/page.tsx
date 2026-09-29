@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentAccess } from "@/lib/access.server";
 import { createClubOrSchool } from "./actions";
 import Link from "next/link";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,7 +52,7 @@ export default async function ClubsPage() {
       </div>
 
       {canEdit && (
-        <form action={createClubOrSchool} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+        <SavableForm action={createClubOrSchool} resetOnSuccess successMessage="Ο σύλλογος/σχολείο δημιουργήθηκε." className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
           <div className="text-xs uppercase tracking-wide text-muted">Νέος Σύλλογος/Σχολείο</div>
           <input
             name="name"
@@ -86,7 +87,7 @@ export default async function ClubsPage() {
           <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
             Δημιουργία
           </button>
-        </form>
+        </SavableForm>
       )}
     </div>
   );

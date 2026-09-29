@@ -2,6 +2,7 @@ import { getCurrentAccess, canScoreCompetition } from "@/lib/access.server";
 import { resolveScan } from "@/lib/rounds/scan";
 import { recordBoardResult, getResultHistory } from "./actions";
 import type { BoardResult } from "@/lib/standings/standings";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -79,7 +80,7 @@ export default async function ScanPage({ params }: { params: { token: string } }
   const boundResult = (r: BoardResult) => recordBoardResult.bind(null, params.token, r);
 
   const btn = (r: BoardResult, text: string, tone: "main" | "muted" = "main") => (
-    <form action={boundResult(r)} key={r}>
+    <SavableForm action={boundResult(r)} key={r}>
       <button
         type="submit"
         disabled={!scan.ready}
@@ -93,7 +94,7 @@ export default async function ScanPage({ params }: { params: { token: string } }
       >
         {text}
       </button>
-    </form>
+    </SavableForm>
   );
 
   return (

@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
 import { createMeetings } from "./actions";
 import Link from "next/link";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -102,7 +103,7 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
       </div>
 
       {rules?.match_board_count && (
-        <form action={boundCreate} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+        <SavableForm action={boundCreate} successMessage="Οι συναντήσεις δημιουργήθηκαν." className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
           <div className="text-xs uppercase tracking-wide text-muted">Δημιουργία Συναντήσεων</div>
           <label className="flex flex-col gap-1 text-sm">
             Πόσες συναντήσεις θέλετε να προσθέσετε;
@@ -117,7 +118,7 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
           <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
             Δημιουργία + QR
           </button>
-        </form>
+        </SavableForm>
       )}
     </div>
   );

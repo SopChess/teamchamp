@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createCompetition } from "./actions";
 import { AUDIENCE_LABELS } from "@/lib/teams/teams";
 import Link from "next/link";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -56,7 +57,7 @@ export default async function AdminHome() {
         )}
       </div>
 
-      <form action={createCompetition} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={createCompetition} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Νέα Διοργάνωση</div>
         <input
           name="name"
@@ -134,7 +135,7 @@ export default async function AdminHome() {
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
           Δημιουργία
         </button>
-      </form>
+      </SavableForm>
     </div>
   );
 }

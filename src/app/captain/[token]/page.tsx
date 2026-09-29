@@ -21,6 +21,7 @@ import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
 import CompositionForm from "./CompositionForm";
 import PlayerSearch from "./PlayerSearch";
 import Countdown from "./Countdown";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -230,7 +231,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
                 </div>
                 {editable && (
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <form action={boundMove.bind(null, entry.id, "up")}>
+                    <SavableForm action={boundMove.bind(null, entry.id, "up")}>
                       <button
                         type="submit"
                         disabled={i === 0}
@@ -239,8 +240,8 @@ export default async function CaptainPortal({ params }: { params: { token: strin
                       >
                         ↑
                       </button>
-                    </form>
-                    <form action={boundMove.bind(null, entry.id, "down")}>
+                    </SavableForm>
+                    <SavableForm action={boundMove.bind(null, entry.id, "down")}>
                       <button
                         type="submit"
                         disabled={i === (entries?.length ?? 0) - 1}
@@ -249,8 +250,8 @@ export default async function CaptainPortal({ params }: { params: { token: strin
                       >
                         ↓
                       </button>
-                    </form>
-                    <form action={boundRemove.bind(null, entry.id)}>
+                    </SavableForm>
+                    <SavableForm action={boundRemove.bind(null, entry.id)} successMessage="Ο αθλητής αφαιρέθηκε.">
                       <button
                         type="submit"
                         aria-label="Αφαίρεση"
@@ -258,7 +259,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
                       >
                         ✕
                       </button>
-                    </form>
+                    </SavableForm>
                   </div>
                 )}
               </div>
@@ -280,7 +281,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
       )}
 
       {editable && (
-        <form action={boundAddPlayer} className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+        <SavableForm action={boundAddPlayer} resetOnSuccess successMessage="Ο αθλητής προστέθηκε." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
           <div className="text-xs uppercase tracking-wide text-muted">Χειροκίνητη προσθήκη (αν δεν βρίσκεται στον κατάλογο) · λατινικά</div>
           <div className="flex gap-2">
             <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
@@ -305,12 +306,12 @@ export default async function CaptainPortal({ params }: { params: { token: strin
           <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
             Προσθήκη
           </button>
-        </form>
+        </SavableForm>
       )}
 
       <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Αρχηγός Ομάδας</div>
-        <form action={boundCaptainInfo} className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+        <SavableForm action={boundCaptainInfo} successMessage="Τα στοιχεία του αρχηγού αποθηκεύτηκαν." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
           <div className="flex gap-2">
             <input
               name="first_name"
@@ -336,7 +337,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
           <button type="submit" className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
             Αποθήκευση Στοιχείων Αρχηγού
           </button>
-        </form>
+        </SavableForm>
       </div>
 
       <div>
@@ -363,7 +364,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
           ) : (
             <p className="text-sm text-muted">Δεν έχει ανέβει ακόμα βεβαίωση.</p>
           )}
-          <form action={boundUploadCertificate} className="flex gap-2">
+          <SavableForm action={boundUploadCertificate} resetOnSuccess successMessage="Η βεβαίωση ανέβηκε." className="flex gap-2">
             <input
               name="file"
               type="file"
@@ -374,7 +375,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
             <button type="submit" className="bg-panel border border-cardBorder rounded-lg px-4 py-2 text-sm whitespace-nowrap">
               {team.attendance_certificate_original_name ? "Αντικατάσταση" : "Ανέβασμα"}
             </button>
-          </form>
+          </SavableForm>
           <p className="text-xs text-muted">PDF ή εικόνα (JPG/PNG), έως 8 MB.</p>
         </div>
       </div>
@@ -385,7 +386,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
           <p className="text-sm">
             Κατάσταση: <span className="text-gold">{ENTRY_FEE_STATUS_LABEL[feeStatus]}</span>
           </p>
-          <form action={boundEntryFeeMethod} className="flex gap-2">
+          <SavableForm action={boundEntryFeeMethod} successMessage="Ο τρόπος πληρωμής αποθηκεύτηκε." className="flex gap-2">
             <input
               name="entry_fee_method"
               defaultValue={team.entry_fee_method ?? ""}
@@ -395,7 +396,7 @@ export default async function CaptainPortal({ params }: { params: { token: strin
             <button type="submit" className="bg-panel border border-cardBorder rounded-lg px-4 py-2 text-sm whitespace-nowrap">
               Αποθήκευση
             </button>
-          </form>
+          </SavableForm>
           <p className="text-xs text-muted">
             Η κατάσταση ενημερώνεται από τη διοργάνωση αφού επιβεβαιωθεί η πληρωμή.
           </p>
@@ -403,11 +404,11 @@ export default async function CaptainPortal({ params }: { params: { token: strin
       </div>
 
       {editable && (
-        <form action={boundConfirm}>
+        <SavableForm action={boundConfirm} successMessage="Η σύνθεση υποβλήθηκε.">
           <button type="submit" className="w-full bg-gold text-bg font-semibold rounded-xl py-3 text-sm">
             Υποβολή Σύνθεσης
           </button>
-        </form>
+        </SavableForm>
       )}
     </div>
   );

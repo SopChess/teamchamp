@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createTeam, deleteTeam, setEntryFeeStatus } from "./actions";
 import { ENTRY_FEE_STATUS_LABEL, type EntryFeeStatus } from "@/lib/attendance/attendance";
 import TeamCertificateLink from "./TeamCertificateLink";
+import SavableForm from "@/components/SavableForm";
 import Link from "next/link";
 import { genderMismatches, type AthleteGender } from "@/lib/eso/genderCheck";
 import {
@@ -165,7 +166,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-muted">Παράβολο:</span>
-                <form action={async (fd: FormData) => { "use server"; await boundSetFee(String(fd.get("status"))); }} className="flex items-center gap-1.5">
+                <SavableForm action={async (fd: FormData) => { "use server"; await boundSetFee(String(fd.get("status"))); }} successMessage="Ενημερώθηκε." className="flex items-center gap-1.5">
                   <select
                     name="status"
                     defaultValue={feeStatus}
@@ -176,16 +177,16 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
                     ))}
                   </select>
                   <button type="submit" className="text-gold hover:underline">Ενημέρωση</button>
-                </form>
+                </SavableForm>
                 {t.entry_fee_method && <span className="text-muted">· {t.entry_fee_method}</span>}
               </div>
               <div className="flex justify-end">
                 {canDelete ? (
-                  <form action={boundDelete}>
+                  <SavableForm action={boundDelete} successMessage="Η ομάδα διαγράφηκε.">
                     <button type="submit" className="text-xs text-red-400 hover:underline">
                       Διαγραφή
                     </button>
-                  </form>
+                  </SavableForm>
                 ) : (
                   <span className="text-xs text-muted">Έχει κληρωθεί — δεν διαγράφεται</span>
                 )}
@@ -198,7 +199,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
         )}
       </div>
 
-      <form action={boundCreate} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={boundCreate} resetOnSuccess successMessage="Η ομάδα δημιουργήθηκε." className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Νέα Ομάδα</div>
         <select
           name="club_or_school_id"
@@ -242,7 +243,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
             .
           </p>
         )}
-      </form>
+      </SavableForm>
     </div>
   );
 }

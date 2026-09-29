@@ -4,6 +4,7 @@ import { teamDisplayName } from "@/lib/teams/teams";
 import { finalizeExpiredCompositions } from "@/lib/rounds/server";
 import { submissionWindow } from "@/lib/rounds/window";
 import Link from "next/link";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -96,7 +97,7 @@ export default async function RoundsPage({ params }: { params: { id: string } })
         </p>
       </div>
 
-      <form action={boundUpload} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={boundUpload} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Ανέβασμα Κλήρωσης Γύρου</div>
         <input
           name="file"
@@ -108,7 +109,7 @@ export default async function RoundsPage({ params }: { params: { id: string } })
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
           Ανέβασμα &amp; Αντιστοίχιση
         </button>
-      </form>
+      </SavableForm>
 
       <div className="flex flex-col gap-6">
         {(rounds ?? []).map((r) => {
@@ -194,8 +195,9 @@ export default async function RoundsPage({ params }: { params: { id: string } })
                           {x.cap ? `Αρχηγός: ${x.cap.last_name} ${x.cap.first_name}${x.cap.phone ? ` · τηλ. ${x.cap.phone}` : ""}` : "Δεν έχει δηλωθεί αρχηγός"}
                         </div>
                         {x.status !== "submitted" && (
-                          <form
+                          <SavableForm
                             action={extendSubmissionWindow.bind(null, params.id, r.id, x.teamId)}
+                            successMessage="Δόθηκε παράταση."
                             className="flex items-center gap-2"
                           >
                             <select name="minutes" defaultValue="5" className="bg-card border border-cardBorder rounded-md px-2 py-1 text-xs">
@@ -206,7 +208,7 @@ export default async function RoundsPage({ params }: { params: { id: string } })
                             <button type="submit" className="text-xs bg-card border border-cardBorder rounded-md px-3 py-1">
                               Παράταση
                             </button>
-                          </form>
+                          </SavableForm>
                         )}
                       </div>
                     ))}

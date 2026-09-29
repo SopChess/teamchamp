@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ACCESS_COOKIE } from "@/lib/access";
 import { createAccessUser, setAccessActive } from "./actions";
 import CopyLinkButton from "./CopyLinkButton";
+import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -80,14 +81,14 @@ export default async function UsersPage() {
             </div>
             <div className="flex items-center gap-2 pt-1">
               {u.active && <CopyLinkButton token={u.token} />}
-              <form action={setAccessActive.bind(null, u.id, !u.active)}>
+              <SavableForm action={setAccessActive.bind(null, u.id, !u.active)}>
                 <button
                   type="submit"
                   className="text-xs bg-panel border border-cardBorder rounded-lg px-3 py-1.5"
                 >
                   {u.active ? "Ανάκληση" : "Επανενεργοποίηση"}
                 </button>
-              </form>
+              </SavableForm>
             </div>
           </div>
         ))}
@@ -96,7 +97,7 @@ export default async function UsersPage() {
         )}
       </div>
 
-      <form action={createAccessUser} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
+      <SavableForm action={createAccessUser} resetOnSuccess successMessage="Ο χρήστης δημιουργήθηκε." className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Νέος χρήστης</div>
         <input
           name="email"
@@ -137,7 +138,7 @@ export default async function UsersPage() {
         <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
           Δημιουργία χρήστη
         </button>
-      </form>
+      </SavableForm>
     </div>
   );
 }
