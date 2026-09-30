@@ -15,7 +15,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, registration_deadline")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, registration_deadline, entry_fee_amount, entry_fee_note")
     .eq("id", params.id)
     .single();
 
@@ -143,6 +143,32 @@ export default async function CompetitionPage({ params }: { params: { id: string
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
+        <div className="flex gap-3">
+          <label className="flex flex-col gap-1 text-sm flex-1">
+            Παράβολο συμμετοχής (€)
+            <input
+              name="entry_fee_amount"
+              type="number"
+              step="0.01"
+              min={0}
+              defaultValue={competition?.entry_fee_amount ?? ""}
+              placeholder="κενό = χωρίς παράβολο"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm flex-1">
+            Σημείωση παραβόλου
+            <input
+              name="entry_fee_note"
+              defaultValue={competition?.entry_fee_note ?? ""}
+              placeholder="π.χ. ανά αθλητή"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            />
+          </label>
+        </div>
+        <p className="text-xs text-muted -mt-1">
+          Αν αφήσετε το ποσό κενό, η ενότητα παραβόλου δεν εμφανίζεται καθόλου στο Portal Αρχηγού.
+        </p>
         <button type="submit" className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
           Αποθήκευση Στοιχείων
         </button>

@@ -41,17 +41,16 @@ describe("SavableForm — επιτυχία", () => {
     const action = vi.fn(() => new Promise<void>((r) => { resolve = r; }));
     render(<Form action={action} />);
 
-    // Το πραγματικό ενδιαφέρον είναι το <fieldset disabled> γύρω από τα πεδία — αυτό είναι στάνταρ HTML
-    // συμπεριφορά (απενεργοποιεί ΟΛΑ τα εσωτερικά πεδία/κουμπιά σε κάθε πραγματικό browser)· το jsdom
-    // δεν προσομοιώνει πλήρως την κληρονομικότητα προς τα παιδιά, οπότε ελέγχουμε το ίδιο το fieldset.
+    // pointer-events-none σε ένα απλό div (ΟΧΙ <fieldset disabled>: τα fieldset έχουν γνωστό πρόβλημα
+    // συρρίκνωσης σε πολλούς browsers μέσα σε flex/grid, βλ. σχόλιο στο SavableForm.tsx).
     const button = screen.getByText("Αποθήκευση") as HTMLButtonElement;
     const input = screen.getByDisplayValue("Αρχικό") as HTMLInputElement;
     await user.click(button);
-    const fieldset = await screen.findByText("Αποθήκευση...").then(() => input.closest("fieldset")!);
-    expect(fieldset.disabled).toBe(true);
+    const wrapper = await screen.findByText("Αποθήκευση...").then(() => input.closest("form")!.querySelector(":scope > div")! as HTMLElement);
+    expect(wrapper.className).toContain("pointer-events-none");
 
     resolve();
-    await waitFor(() => expect(fieldset.disabled).toBe(false));
+    await waitFor(() => expect(wrapper.className).not.toContain("pointer-events-none"));
     expect(action).toHaveBeenCalledTimes(1); // δεν διπλοκλήθηκε ενώ ήταν κλειδωμένο
   });
 

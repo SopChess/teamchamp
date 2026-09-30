@@ -154,6 +154,9 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
                   Κατάθεση Βασικής Σύνθεσης έως: {new Date(t.roster_lock_deadline).toLocaleString("el-GR")}
                 </div>
               )}
+              <Link href={`/admin/${params.id}/teams/${t.id}`} className="text-xs text-gold underline self-start">
+                Επεξεργασία σύνθεσης →
+              </Link>
               {captainUrl ? (
                 <div className="text-xs">
                   Portal Αρχηγού:{" "}

@@ -27,6 +27,9 @@ export async function createCompetition(formData: FormData) {
   const venueMapsUrl = String(formData.get("venue_maps_url") ?? "").trim() || null;
   const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
   const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
+  const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
+  const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
+  const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -46,6 +49,8 @@ export async function createCompetition(formData: FormData) {
       announcement_url: announcementUrl,
       venue_maps_url: venueMapsUrl,
       registration_deadline: registrationDeadline,
+      entry_fee_amount: entryFeeAmount,
+      entry_fee_note: entryFeeNote,
     })
     .select("id")
     .single();
@@ -75,6 +80,9 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const venueMapsUrl = String(formData.get("venue_maps_url") ?? "").trim() || null;
   const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
   const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
+  const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
+  const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
+  const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -92,6 +100,8 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       announcement_url: announcementUrl,
       venue_maps_url: venueMapsUrl,
       registration_deadline: registrationDeadline,
+      entry_fee_amount: entryFeeAmount,
+      entry_fee_note: entryFeeNote,
     })
     .eq("id", competitionId);
 

@@ -47,7 +47,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const { data: team } = await supabase
     .from("teams")
     .select(
-      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method"
+      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note)"
     )
     .eq("id", teamId)
     .maybeSingle();
@@ -77,6 +77,8 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const round = await loadCaptainRound(team.id, team.competition_id);
   const certificateUrl = team.attendance_certificate_original_name ? await getCertificateUrl(params.token, teamId) : null;
   const feeStatus = isEntryFeeStatus(team.entry_fee_status) ? team.entry_fee_status : "pending";
+  const competitionFee = Array.isArray(team.competitions) ? team.competitions[0] : team.competitions;
+  const feeAmount = competitionFee?.entry_fee_amount ?? null;
   const boundUploadCertificate = uploadAttendanceCertificate.bind(null, params.token, teamId);
   const boundEntryFeeMethod = setEntryFeeMethod.bind(null, params.token, teamId);
   const roundRules = round.kind === "play" && !round.composition ? await loadRules(supabase, team.competition_id) : null;
@@ -382,9 +384,13 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
         </div>
       </div>
 
+      {feeAmount != null && (
       <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Παράβολο Συμμετοχής</div>
         <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+          <p className="text-sm">
+            Ποσό: <span className="text-gold">{feeAmount}€{competitionFee?.entry_fee_note ? ` (${competitionFee.entry_fee_note})` : ""}</span>
+          </p>
           <p className="text-sm">
             Κατάσταση: <span className="text-gold">{ENTRY_FEE_STATUS_LABEL[feeStatus]}</span>
           </p>
@@ -404,6 +410,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
           </p>
         </div>
       </div>
+      )}
 
       {editable && (
         <SavableForm action={boundConfirm} successMessage="Η σύνθεση υποβλήθηκε.">

@@ -25,6 +25,12 @@ interface Props {
  * transition — επιστρέφει false μόλις επιστραφεί το Promise, πριν ολοκληρωθεί.
  * Τα redirect() του Next.js (π.χ. μετά τη δημιουργία διοργάνωσης) περνάνε
  * κανονικά — δεν τα εμφανίζει ως σφάλμα.
+ *
+ * Το "κλείδωμα" όσο εκτελείται γίνεται με pointer-events-none σε ένα απλό div
+ * γύρω από τα πεδία — ΟΧΙ με <fieldset disabled>: τα fieldset έχουν γνωστό,
+ * μακροχρόνιο πρόβλημα σε πολλούς browsers (δεν συρρικνώνονται σωστά μέσα σε
+ * flex/grid ό,τι min-width και να οριστεί ρητά), που προκαλούσε τα πεδία να
+ * ξεχειλίζουν το πλαίσιό τους. Ένα απλό div δεν έχει αυτό το πρόβλημα.
  */
 export default function SavableForm({ action, children, className, successMessage = "Αποθηκεύτηκε.", resetOnSuccess }: Props) {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -59,9 +65,9 @@ export default function SavableForm({ action, children, className, successMessag
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className={className}>
-      <fieldset disabled={pending} className="contents border-0 p-0 m-0 min-w-0">
+      <div className={pending ? "pointer-events-none opacity-60 transition-opacity" : "transition-opacity"}>
         {children}
-      </fieldset>
+      </div>
       <div role="status" aria-live="polite">
         {pending && <p className="text-xs text-muted mt-2">Αποθήκευση...</p>}
         {!pending && status === "success" && <p className="text-xs text-good mt-2">✓ {message}</p>}

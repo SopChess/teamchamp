@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { toHit, type DirectoryHit } from "@/lib/players/directory";
-import { searchDirectoryRows } from "@/lib/players/server";
+import { searchDirectoryRows, findDirectoryRowByNumber } from "@/lib/players/server";
 
 /**
  * Δοκιμαστική αναζήτηση για τον admin. Είναι ενέργεια μέσα στο /admin, άρα τη
@@ -12,4 +12,9 @@ import { searchDirectoryRows } from "@/lib/players/server";
 export async function adminSearchDirectory(epitheto: string, onoma: string): Promise<DirectoryHit[]> {
   const rows = await searchDirectoryRows(createClient(), epitheto, onoma);
   return rows.map(toHit);
+}
+
+export async function adminSearchDirectoryByNumber(number: string): Promise<DirectoryHit | null> {
+  const row = await findDirectoryRowByNumber(createClient(), number);
+  return row ? toHit(row) : null;
 }
