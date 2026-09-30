@@ -48,7 +48,8 @@ function seed(opts: { rosterSize?: number; lockedTeam2?: boolean } = {}) {
       players_directory: directory,
       players: [], roster_entries: [],
     },
-    relations: {}, uniques: { roster_entries: [["team_id", "player_id"], ["team_id", "declared_order"]] },
+    relations: { teams: { competitions: { table: "competitions", fk: "competition_id" } } },
+    uniques: { roster_entries: [["team_id", "player_id"], ["team_id", "declared_order"]] },
   });
 }
 
@@ -60,25 +61,25 @@ beforeEach(() => { h.db = seed(); });
 
 describe("αναζήτηση — τόνοι και πεζά/κεφαλαία στην πηγή", () => {
   it("βρίσκει επώνυμο που στην πηγή έχει τόνο, ακόμη κι αν ο χρήστης γράψει χωρίς τόνο", async () => {
-    const hits = await searchDirectory("tok1", "ΠΟΛΙΧΝΗΣ", "");
+    const hits = await searchDirectory("tok1", undefined, "ΠΟΛΙΧΝΗΣ", "");
     expect(hits.map((h) => h.epitheto)).toEqual(["ΠΟΛΊΧΝΗΣ"]);
   });
   it("βρίσκει και όταν ο χρήστης γράψει με τόνο ή πεζά", async () => {
-    expect((await searchDirectory("tok1", "Πολίχνης", "")).map((h) => h.id)).toEqual(["PLR-00021"]);
-    expect((await searchDirectory("tok1", "πολιχνησ", "")).map((h) => h.id)).toEqual(["PLR-00021"]);
+    expect((await searchDirectory("tok1", undefined, "Πολίχνης", "")).map((h) => h.id)).toEqual(["PLR-00021"]);
+    expect((await searchDirectory("tok1", undefined, "πολιχνησ", "")).map((h) => h.id)).toEqual(["PLR-00021"]);
   });
   it("βρίσκει επώνυμο και όνομα γραμμένα με πεζά στην πηγή", async () => {
-    expect((await searchDirectory("tok1", "ΛΕΥΚΑ", "ΑΝΝΑ")).map((h) => h.id)).toEqual(["PLR-00022"]);
+    expect((await searchDirectory("tok1", undefined, "ΛΕΥΚΑ", "ΑΝΝΑ")).map((h) => h.id)).toEqual(["PLR-00022"]);
   });
   it("ο χαρακτήρας % δεν λειτουργεί ως μπαλαντέρ (δεν επιστρέφει όλο τον κατάλογο)", async () => {
-    expect(await searchDirectory("tok1", "%%", "")).toEqual([]);
-    expect(await searchDirectory("tok1", "ΤΣ_ΡΟΣ", "")).toEqual([]);
+    expect(await searchDirectory("tok1", undefined, "%%", "")).toEqual([]);
+    expect(await searchDirectory("tok1", undefined, "ΤΣ_ΡΟΣ", "")).toEqual([]);
   });
 });
 
 describe("αναζήτηση στον κατάλογο", () => {
   it("βρίσκει με επώνυμο και επιστρέφει μόνο τα απαραίτητα (έτος, όχι πλήρη γενέθλια)", async () => {
-    const hits = await searchDirectory("tok1", "τσουρος", "");
+    const hits = await searchDirectory("tok1", undefined, "τσουρος", "");
     expect(hits).toHaveLength(1);
     expect(hits[0]).toMatchObject({ epitheto: "ΤΣΟΥΡΟΣ", onoma: "ΓΕΩΡΓΙΟΣ", birthYear: 2012, rating: 2162 });
     const json = JSON.stringify(hits);
@@ -87,47 +88,47 @@ describe("αναζήτηση στον κατάλογο", () => {
   });
 
   it("δουλεύει με πεζά και τόνους (Τσούρος)", async () => {
-    expect((await searchDirectory("tok1", "Τσούρος", "")).map((x) => x.id)).toEqual(["PLR-00017"]);
+    expect((await searchDirectory("tok1", undefined, "Τσούρος", "")).map((x) => x.id)).toEqual(["PLR-00017"]);
   });
 
   it("το όνομα στενεύει τα αποτελέσματα", async () => {
-    const hits = await searchDirectory("tok1", "ΓΕΩΡΓΙΟ", "ΑΝΝΑ");
+    const hits = await searchDirectory("tok1", undefined, "ΓΕΩΡΓΙΟ", "ΑΝΝΑ");
     expect(hits.map((x) => x.id)).toEqual(["PLR-00020"]);
   });
 
   it("επώνυμο κάτω από 2 γράμματα δεν επιστρέφει τίποτα", async () => {
-    expect(await searchDirectory("tok1", "Τ", "")).toEqual([]);
-    expect(await searchDirectory("tok1", "", "")).toEqual([]);
+    expect(await searchDirectory("tok1", undefined, "Τ", "")).toEqual([]);
+    expect(await searchDirectory("tok1", undefined, "", "")).toEqual([]);
   });
 
   it("ΠΟΤΕ περισσότερα από 15 αποτελέσματα (δεν 'κατεβαίνει' ο κατάλογος)", async () => {
-    const hits = await searchDirectory("tok1", "ΚΟΥΛΙΝΑΣ", "");
+    const hits = await searchDirectory("tok1", undefined, "ΚΟΥΛΙΝΑΣ", "");
     expect(hits).toHaveLength(15);
   });
 
   it("χωρίς έγκυρο link αρχηγού δεν επιστρέφει τίποτα (ο κατάλογος δεν είναι δημόσιος)", async () => {
-    expect(await searchDirectory("λάθος", "ΤΣΟΥΡΟΣ", "")).toEqual([]);
-    expect(await searchDirectory("", "ΤΣΟΥΡΟΣ", "")).toEqual([]);
+    expect(await searchDirectory("λάθος", undefined, "ΤΣΟΥΡΟΣ", "")).toEqual([]);
+    expect(await searchDirectory("", undefined, "ΤΣΟΥΡΟΣ", "")).toEqual([]);
   });
 
   it("χαρακτήρες φίλτρων στον όρο δεν σπάνε ούτε αλλάζουν το ερώτημα", async () => {
-    expect(await searchDirectory("tok1", "ΤΣΟΥΡΟΣ%,eso_id.eq.1)(", "")).toEqual([]);
-    expect(await searchDirectory("tok1", "%%", "")).toEqual([]);
+    expect(await searchDirectory("tok1", undefined, "ΤΣΟΥΡΟΣ%,eso_id.eq.1)(", "")).toEqual([]);
+    expect(await searchDirectory("tok1", undefined, "%%", "")).toEqual([]);
   });
 
   it("αναζήτηση με ΑΜ ΕΣΟ και με FIDE ID", async () => {
-    expect((await searchDirectoryByNumber("tok1", "00017"))?.id ?? (await searchDirectoryByNumber("tok1", "17"))?.id).toBe("PLR-00017");
-    expect((await searchDirectoryByNumber("tok1", "4200330"))?.id).toBe("PLR-00017");
-    expect(await searchDirectoryByNumber("tok1", "99999999")).toBeNull();
-    expect(await searchDirectoryByNumber("tok1", "abc")).toBeNull();
-    expect(await searchDirectoryByNumber("λάθος", "4200330")).toBeNull();
+    expect((await searchDirectoryByNumber("tok1", undefined, "00017"))?.id ?? (await searchDirectoryByNumber("tok1", undefined, "17"))?.id).toBe("PLR-00017");
+    expect((await searchDirectoryByNumber("tok1", undefined, "4200330"))?.id).toBe("PLR-00017");
+    expect(await searchDirectoryByNumber("tok1", undefined, "99999999")).toBeNull();
+    expect(await searchDirectoryByNumber("tok1", undefined, "abc")).toBeNull();
+    expect(await searchDirectoryByNumber("λάθος", undefined, "4200330")).toBeNull();
   });
 });
 
 describe("προσθήκη από τον κατάλογο — φύλο υποχρεωτικό", () => {
   it("χωρίς φύλο ή με άκυρο φύλο απορρίπτεται και δεν γράφεται τίποτα", async () => {
     for (const g of ["", "X", "m", "Άνδρας"]) {
-      const r = await addDirectoryPlayerToRoster("tok1", "PLR-00017", g);
+      const r = await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", g);
       expect(r.ok).toBe(false);
     }
     expect(h.db.T("players")).toHaveLength(0);
@@ -135,7 +136,7 @@ describe("προσθήκη από τον κατάλογο — φύλο υποχ�
   });
 
   it("προσθέτει με λατινικά ονόματα, το φύλο που επέλεξε ο υπεύθυνος, και τα στοιχεία από τον κατάλογο", async () => {
-    const r = await addDirectoryPlayerToRoster("tok1", "PLR-00018", "F");
+    const r = await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00018", "F");
     expect(r).toEqual({ ok: true });
     const entry = rosterOf("team1")[0];
     expect(entry.declared_order).toBe(1);
@@ -146,27 +147,27 @@ describe("προσθήκη από τον κατάλογο — φύλο υποχ�
   });
 
   it("το φύλο είναι ΑΚΡΙΒΩΣ αυτό που επιλέχθηκε, ακόμα κι αν το όνομα 'δείχνει' άλλο", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00019", "F"); // ΝΙΚΟΛΑΟΣ ως Γυναίκα (επιλογή υπευθύνου)
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00019", "F"); // ΝΙΚΟΛΑΟΣ ως Γυναίκα (επιλογή υπευθύνου)
     expect(playerOf(rosterOf("team1")[0].player_id).gender).toBe("F");
   });
 
   it("διαβάζει βαθμούς από τον κατάλογο: FIDE και εθνικός, το 0 ως χωρίς βαθμό", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
     expect(playerOf(rosterOf("team1")[0].player_id)).toMatchObject({ rating_fide: 2162, rating_national: 1500, fide_id: "4200330" });
   });
 
   it("αθλητής χωρίς γενέθλια προστίθεται με birth_date null", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00019", "M");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00019", "M");
     expect(playerOf(rosterOf("team1")[0].player_id).birth_date).toBeNull();
   });
 
   it("άγνωστος κωδικός καταλόγου", async () => {
-    const r = await addDirectoryPlayerToRoster("tok1", "PLR-ΔΕΝ-ΥΠΑΡΧΕΙ", "M");
+    const r = await addDirectoryPlayerToRoster("tok1", undefined, "PLR-ΔΕΝ-ΥΠΑΡΧΕΙ", "M");
     expect(r).toEqual({ ok: false, message: "Ο αθλητής δεν βρέθηκε στον κατάλογο." });
   });
 
   it("άκυρο link αρχηγού", async () => {
-    const r = await addDirectoryPlayerToRoster("λάθος", "PLR-00017", "M");
+    const r = await addDirectoryPlayerToRoster("λάθος", undefined, "PLR-00017", "M");
     expect(r.ok).toBe(false);
     expect(h.db.T("players")).toHaveLength(0);
   });
@@ -174,37 +175,37 @@ describe("προσθήκη από τον κατάλογο — φύλο υποχ�
 
 describe("έλεγχος διπλής εγγραφής σε όλη τη διοργάνωση", () => {
   it("ο ίδιος αθλητής δεν μπαίνει δύο φορές στην ίδια ομάδα", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
-    const again = await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
+    const again = await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
     expect(again).toEqual({ ok: false, message: "Ο αθλητής είναι ήδη στη βασική σύνθεση της ομάδας σας." });
     expect(rosterOf("team1")).toHaveLength(1);
   });
 
   it("ο ίδιος αθλητής δεν μπαίνει σε άλλη ομάδα της ΙΔΙΑΣ διοργάνωσης", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
-    const other = await addDirectoryPlayerToRoster("tok2", "PLR-00017", "M");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
+    const other = await addDirectoryPlayerToRoster("tok2", undefined, "PLR-00017", "M");
     expect(other).toEqual({ ok: false, message: "Ο αθλητής είναι ήδη δηλωμένος σε άλλη ομάδα της διοργάνωσης." });
     expect(rosterOf("team2")).toHaveLength(0);
   });
 
   it("μπορεί όμως να μπει σε ομάδα ΑΛΛΗΣ διοργάνωσης, με επαναχρησιμοποίηση της εγγραφής του", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
-    const r = await addDirectoryPlayerToRoster("tok3", "PLR-00017", "M");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
+    const r = await addDirectoryPlayerToRoster("tok3", undefined, "PLR-00017", "M");
     expect(r).toEqual({ ok: true });
     expect(h.db.T("players")).toHaveLength(1); // μία εγγραφή αθλητή, όχι δύο
     expect(rosterOf("team3")).toHaveLength(1);
   });
 
   it("η χειροκίνητη καταχώρηση του ίδιου αθλητή (λατινικά) αναγνωρίζεται ως διπλή", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M"); // ΤΣΟΥΡΟΣ ΓΕΩΡΓΙΟΣ, γεν. 2012
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M"); // ΤΣΟΥΡΟΣ ΓΕΩΡΓΙΟΣ, γεν. 2012
     await expect(
-      addPlayerToRoster("tok2", fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "2012-01-01", gender: "M" }))
+      addPlayerToRoster("tok2", undefined, fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "2012-01-01", gender: "M" }))
     ).rejects.toThrow(/ήδη δηλωμένος σε άλλη ομάδα/);
   });
 
   it("ίδιο ονοματεπώνυμο με ΔΙΑΦΟΡΕΤΙΚΟ έτος γέννησης είναι άλλος αθλητής", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
-    await addPlayerToRoster("tok2", fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "1946-01-01", gender: "M" }));
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
+    await addPlayerToRoster("tok2", undefined, fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "1946-01-01", gender: "M" }));
     expect(rosterOf("team2")).toHaveLength(1);
   });
 });
@@ -212,27 +213,27 @@ describe("έλεγχος διπλής εγγραφής σε όλη τη διορ
 describe("όριο αθλητών και σειρά", () => {
   it("δεν υπερβαίνει τον αριθμό αθλητών της βασικής σύνθεσης", async () => {
     h.db = seed({ rosterSize: 2 });
-    expect((await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M")).ok).toBe(true);
-    expect((await addDirectoryPlayerToRoster("tok1", "PLR-00018", "F")).ok).toBe(true);
-    const third = await addDirectoryPlayerToRoster("tok1", "PLR-00020", "F");
+    expect((await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M")).ok).toBe(true);
+    expect((await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00018", "F")).ok).toBe(true);
+    const third = await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00020", "F");
     expect(third).toEqual({ ok: false, message: "Η βασική σύνθεση επιτρέπει το πολύ 2 αθλητές." });
     expect(rosterOf("team1")).toHaveLength(2);
   });
 
   it("ΔΙΟΡΘΩΣΗ ΛΑΘΟΥΣ: μετά από αφαίρεση αθλητή από τη μέση, η νέα προσθήκη δεν συγκρούεται με θέση", async () => {
-    await addDirectoryPlayerToRoster("tok1", "PLR-00017", "M");
-    await addDirectoryPlayerToRoster("tok1", "PLR-00018", "F");
-    await addDirectoryPlayerToRoster("tok1", "PLR-00020", "F");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00018", "F");
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00020", "F");
     const middle = rosterOf("team1").find((r: any) => r.declared_order === 2);
-    await removeRosterEntry("tok1", middle.id); // μένουν οι θέσεις 1 και 3
-    const r = await addDirectoryPlayerToRoster("tok1", "PLR-00019", "M");
+    await removeRosterEntry("tok1", undefined, middle.id); // μένουν οι θέσεις 1 και 3
+    const r = await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00019", "M");
     expect(r).toEqual({ ok: true }); // πριν τη διόρθωση: πλήθος+1 = 3 → σύγκρουση με την υπάρχουσα θέση 3
     expect(rosterOf("team1").map((x: any) => x.declared_order).sort()).toEqual([1, 3, 4]);
   });
 
   it("κλειδωμένη βασική σύνθεση δεν δέχεται προσθήκες", async () => {
     h.db = seed({ lockedTeam2: true });
-    const r = await addDirectoryPlayerToRoster("tok2", "PLR-00017", "M");
+    const r = await addDirectoryPlayerToRoster("tok2", undefined, "PLR-00017", "M");
     expect(r).toEqual({ ok: false, message: "Η βασική σύνθεση είναι ήδη κλειδωμένη." });
     expect(rosterOf("team2")).toHaveLength(0);
   });
@@ -242,20 +243,20 @@ describe("χειροκίνητη προσθήκη — φύλο υποχρεωτ�
   const base = { first_name: "Nikos", last_name: "Alexiou", birth_date: "2011-04-04" };
 
   it("χωρίς φύλο απορρίπτεται", async () => {
-    await expect(addPlayerToRoster("tok1", fd({ ...base }))).rejects.toThrow(/φύλο/);
-    await expect(addPlayerToRoster("tok1", fd({ ...base, gender: "" }))).rejects.toThrow(/φύλο/);
-    await expect(addPlayerToRoster("tok1", fd({ ...base, gender: "X" }))).rejects.toThrow(/φύλο/);
+    await expect(addPlayerToRoster("tok1", undefined, fd({ ...base }))).rejects.toThrow(/φύλο/);
+    await expect(addPlayerToRoster("tok1", undefined, fd({ ...base, gender: "" }))).rejects.toThrow(/φύλο/);
+    await expect(addPlayerToRoster("tok1", undefined, fd({ ...base, gender: "X" }))).rejects.toThrow(/φύλο/);
     expect(h.db.T("players")).toHaveLength(0);
   });
 
   it("με φύλο περνά και αποθηκεύει σωστά", async () => {
-    await addPlayerToRoster("tok1", fd({ ...base, gender: "F", rating_national: "1400", national_id: "555" }));
+    await addPlayerToRoster("tok1", undefined, fd({ ...base, gender: "F", rating_national: "1400", national_id: "555" }));
     expect(playerOf(rosterOf("team1")[0].player_id)).toMatchObject({
       first_name: "Nikos", last_name: "Alexiou", gender: "F", rating_national: 1400, national_id: "555",
     });
   });
 
   it("απαιτεί όνομα και επώνυμο", async () => {
-    await expect(addPlayerToRoster("tok1", fd({ first_name: "", last_name: "X", gender: "M" }))).rejects.toThrow(/υποχρεωτικά/);
+    await expect(addPlayerToRoster("tok1", undefined, fd({ first_name: "", last_name: "X", gender: "M" }))).rejects.toThrow(/υποχρεωτικά/);
   });
 });

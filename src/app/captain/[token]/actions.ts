@@ -23,23 +23,75 @@ const CERTIFICATE_BUCKET = "attendance-certificates";
  * καμία κατάσταση session, γιατί ο αρχηγός αυθεντικοποιείται αποκλειστικά
  * μέσω αυτού του token-in-URL (§2 του document), όχι μέσω Supabase Auth.
  */
-async function getTeamByToken(token: string) {
-  const supabase = createClient();
-  const { data: team, error } = await supabase
-    .from("teams")
-    .select("id, competition_id, status, roster_lock_deadline, roster_locked")
-    .eq("captain_access_token", token)
-    .maybeSingle();
+const TEAM_COLUMNS =
+  "id, competition_id, status, roster_lock_deadline, roster_locked, captain_access_token, captain_account_id, competitions(registration_deadline)";
 
-  if (error || !team) {
-    throw new Error("Άκυρο ή ληγμένο link.");
-  }
-  return team;
+type TeamRow = {
+  id: string;
+  competition_id: string;
+  status: string;
+  roster_lock_deadline: string | null;
+  roster_locked: boolean;
+  captain_access_token: string | null;
+  captain_account_id: string | null;
+  competitions: { registration_deadline: string | null } | { registration_deadline: string | null }[] | null;
+};
+
+function registrationDeadlineOf(team: TeamRow): string | null {
+  const c = team.competitions;
+  return (Array.isArray(c) ? c[0] : c)?.registration_deadline ?? null;
 }
 
-function assertRosterEditable(team: { roster_locked: boolean; roster_lock_deadline: string | null }) {
+/**
+ * Βρίσκει την ομάδα από το token-in-URL. Δύο τρόποι πρόσβασης, και οι δύο
+ * ενεργοί ταυτόχρονα (επιβεβαιωμένο, καμία αλλαγή στα παλιά links):
+ *  - ΠΑΛΙΟ: το token είναι το μόνιμο captain_access_token της ίδιας της ομάδας
+ *    (ομάδες που δημιούργησε ο admin) — δεν χρειάζεται teamId.
+ *  - ΝΕΟ: το token ανήκει σε captain_accounts (υπεύθυνος που εγγράφηκε μόνος
+ *    του, πιθανόν με πάνω από μία ομάδα) — όταν έχει πάνω από μία, ΑΠΑΙΤΕΙΤΑΙ
+ *    teamId για να ξέρουμε ΠΟΙΑ ομάδα αφορά η ενέργεια, και επαληθεύεται ότι
+ *    πράγματι ανήκει σε αυτόν τον λογαριασμό (όχι απλώς οποιαδήποτε ομάδα).
+ */
+async function getTeamByToken(token: string, teamId: string | undefined): Promise<TeamRow> {
+  const supabase = createClient();
+
+  if (teamId) {
+    const { data: team } = await supabase.from("teams").select(TEAM_COLUMNS).eq("id", teamId).maybeSingle<TeamRow>();
+    if (!team) throw new Error("Άκυρο ή ληγμένο link.");
+    if (team.captain_access_token === token) return team;
+    if (team.captain_account_id) {
+      const { data: account } = await supabase
+        .from("captain_accounts")
+        .select("id")
+        .eq("id", team.captain_account_id)
+        .eq("access_token", token)
+        .maybeSingle();
+      if (account) return team;
+    }
+    throw new Error("Άκυρο ή ληγμένο link.");
+  }
+
+  const { data: legacy } = await supabase.from("teams").select(TEAM_COLUMNS).eq("captain_access_token", token).maybeSingle<TeamRow>();
+  if (legacy) return legacy;
+
+  const { data: account } = await supabase.from("captain_accounts").select("id").eq("access_token", token).maybeSingle();
+  if (account) {
+    const { data: teams } = await supabase.from("teams").select(TEAM_COLUMNS).eq("captain_account_id", account.id);
+    if (teams && teams.length === 1) return teams[0] as TeamRow;
+    if (teams && teams.length > 1) {
+      throw new Error("Ο λογαριασμός σας έχει περισσότερες από μία ομάδες — επιλέξτε ομάδα.");
+    }
+  }
+  throw new Error("Άκυρο ή ληγμένο link.");
+}
+
+function assertRosterEditable(team: TeamRow) {
   if (team.roster_locked) {
     throw new Error("Η βασική σύνθεση είναι ήδη κλειδωμένη.");
+  }
+  const deadline = registrationDeadlineOf(team);
+  if (deadline && new Date(deadline) < new Date()) {
+    throw new Error("Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.");
   }
   if (team.roster_lock_deadline && new Date(team.roster_lock_deadline) < new Date()) {
     throw new Error("Η προθεσμία κατάθεσης βασικής σύνθεσης έχει λήξει.");
@@ -125,8 +177,8 @@ async function addAthleteToTeam(
 }
 
 /** Χειροκίνητη προσθήκη (όταν ο αθλητής δεν βρίσκεται στον κατάλογο). Το φύλο είναι υποχρεωτικό. */
-export async function addPlayerToRoster(token: string, formData: FormData) {
-  const team = await getTeamByToken(token);
+export async function addPlayerToRoster(token: string, teamId: string | undefined, formData: FormData) {
+  const team = await getTeamByToken(token, teamId);
   assertRosterEditable(team);
 
   const firstName = cleanName(String(formData.get("first_name") ?? ""));
@@ -167,9 +219,9 @@ export async function addPlayerToRoster(token: string, formData: FormData) {
  * στοιχεία ανηλίκων) να μην είναι δημόσια προσβάσιμος. Επιστρέφει μόνο ό,τι χρειάζεται
  * για την επιλογή: όχι πλήρη γενέθλια.
  */
-export async function searchDirectory(token: string, epitheto: string, onoma: string): Promise<DirectoryHit[]> {
+export async function searchDirectory(token: string, teamId: string | undefined, epitheto: string, onoma: string): Promise<DirectoryHit[]> {
   try {
-    await getTeamByToken(token);
+    await getTeamByToken(token, teamId);
   } catch {
     return [];
   }
@@ -177,9 +229,9 @@ export async function searchDirectory(token: string, epitheto: string, onoma: st
   return rows.map(toHit);
 }
 
-export async function searchDirectoryByNumber(token: string, number: string): Promise<DirectoryHit | null> {
+export async function searchDirectoryByNumber(token: string, teamId: string | undefined, number: string): Promise<DirectoryHit | null> {
   try {
-    await getTeamByToken(token);
+    await getTeamByToken(token, teamId);
   } catch {
     return null;
   }
@@ -194,11 +246,12 @@ export async function searchDirectoryByNumber(token: string, number: string): Pr
  */
 export async function addDirectoryPlayerToRoster(
   token: string,
+  teamId: string | undefined,
   directoryId: string,
   gender: Gender | string
 ): Promise<AddAthleteResult> {
   try {
-    const team = await getTeamByToken(token);
+    const team = await getTeamByToken(token, teamId);
     assertRosterEditable(team);
     if (!isGender(gender)) {
       return { ok: false, message: "Επιλέξτε το φύλο του αθλητή (Άνδρας ή Γυναίκα)." };
@@ -214,9 +267,9 @@ export async function addDirectoryPlayerToRoster(
   }
 }
 
-export async function removeRosterEntry(token: string, entryId: string) {
+export async function removeRosterEntry(token: string, teamId: string | undefined, entryId: string) {
   const supabase = createClient();
-  const team = await getTeamByToken(token);
+  const team = await getTeamByToken(token, teamId);
   assertRosterEditable(team);
 
   const { error } = await supabase
@@ -232,9 +285,9 @@ export async function removeRosterEntry(token: string, entryId: string) {
   revalidatePath(`/captain/${token}`);
 }
 
-export async function moveRosterEntry(token: string, entryId: string, direction: "up" | "down") {
+export async function moveRosterEntry(token: string, teamId: string | undefined, entryId: string, direction: "up" | "down") {
   const supabase = createClient();
-  const team = await getTeamByToken(token);
+  const team = await getTeamByToken(token, teamId);
   assertRosterEditable(team);
 
   const { data: entries } = await supabase
@@ -263,9 +316,9 @@ export async function moveRosterEntry(token: string, entryId: string, direction:
   revalidatePath(`/captain/${token}`);
 }
 
-export async function saveCaptainInfo(token: string, formData: FormData) {
+export async function saveCaptainInfo(token: string, teamId: string | undefined, formData: FormData) {
   const supabase = createClient();
-  const team = await getTeamByToken(token);
+  const team = await getTeamByToken(token, teamId);
 
   const firstName = String(formData.get("first_name") ?? "").trim();
   const lastName = String(formData.get("last_name") ?? "").trim();
@@ -300,9 +353,9 @@ export async function saveCaptainInfo(token: string, formData: FormData) {
   revalidatePath(`/captain/${token}`);
 }
 
-export async function confirmRoster(token: string) {
+export async function confirmRoster(token: string, teamId: string | undefined) {
   const supabase = createClient();
-  const team = await getTeamByToken(token);
+  const team = await getTeamByToken(token, teamId);
   assertRosterEditable(team);
 
   const { count } = await supabase
@@ -341,12 +394,13 @@ export type SubmitCompositionResult = { ok: true } | { ok: false; message: strin
  */
 export async function submitRoundComposition(
   token: string,
+  teamId: string | undefined,
   roundId: string,
   assignmentsJson: string
 ): Promise<SubmitCompositionResult> {
   try {
     const supabase = createClient();
-    const team = await getTeamByToken(token);
+    const team = await getTeamByToken(token, teamId);
 
     const { data: round } = await supabase
       .from("rounds")
@@ -464,8 +518,8 @@ export async function submitRoundComposition(
  * ποτέ απευθείας από τον browser. Το προηγούμενο αρχείο, αν υπάρχει,
  * αντικαθίσταται (δεν μένει διπλό αρχείο στο storage).
  */
-export async function uploadAttendanceCertificate(token: string, formData: FormData): Promise<void> {
-  const team = await getTeamByToken(token);
+export async function uploadAttendanceCertificate(token: string, teamId: string | undefined, formData: FormData): Promise<void> {
+  const team = await getTeamByToken(token, teamId);
   const file = formData.get("file");
   if (!(file instanceof File)) throw new Error("Επιλέξτε αρχείο.");
 
@@ -510,8 +564,8 @@ export async function uploadAttendanceCertificate(token: string, formData: FormD
 }
 
 /** Ο τρόπος πληρωμής που δηλώνει ο αρχηγός — η ίδια η κατάσταση (πληρώθηκε/απαλλαγή) την ορίζει μόνο ο διαχειριστής. */
-export async function setEntryFeeMethod(token: string, formData: FormData): Promise<void> {
-  const team = await getTeamByToken(token);
+export async function setEntryFeeMethod(token: string, teamId: string | undefined, formData: FormData): Promise<void> {
+  const team = await getTeamByToken(token, teamId);
   const method = String(formData.get("entry_fee_method") ?? "").trim().slice(0, 200);
 
   const supabase = createClient();
@@ -522,8 +576,8 @@ export async function setEntryFeeMethod(token: string, formData: FormData): Prom
 }
 
 /** Προσωρινό link λήψης της βεβαίωσης (λήγει σε 10 λεπτά) — δημιουργείται μόνο κατόπιν αιτήματος με έγκυρο token. */
-export async function getCertificateUrl(token: string): Promise<string | null> {
-  const team = await getTeamByToken(token);
+export async function getCertificateUrl(token: string, teamId: string | undefined): Promise<string | null> {
+  const team = await getTeamByToken(token, teamId);
   const supabase = createClient();
   const { data: row } = await supabase
     .from("teams")

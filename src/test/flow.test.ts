@@ -75,7 +75,10 @@ function seed() {
     },
     relations: {
       roster_entries: { players: { table: "players", fk: "player_id" } },
-      teams: { clubs_schools: { table: "clubs_schools", fk: "club_or_school_id" } },
+      teams: {
+        clubs_schools: { table: "clubs_schools", fk: "club_or_school_id" },
+        competitions: { table: "competitions", fk: "competition_id" },
+      },
     },
     uniques: {
       round_compositions: [["round_id", "team_id"]],
@@ -124,7 +127,7 @@ describe("Στάδιο 2 — ο αρχηγός βλέπει τον γύρο", ()
 
 describe("Στάδιο 2 — υποβολή σύνθεσης", () => {
   it("δέχεται έγκυρη σύνθεση και τη γράφει (σύνθεση + 4 σκακιέρες)", async () => {
-    const res = await submitRoundComposition("tok1", "round1", VALID_T1);
+    const res = await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     expect(res).toEqual({ ok: true });
     const comp = h.db.T("round_compositions");
     expect(comp).toHaveLength(1);
@@ -134,8 +137,8 @@ describe("Στάδιο 2 — υποβολή σύνθεσης", () => {
   });
 
   it("μόλις υποβληθεί, δεν αλλάζει", async () => {
-    await submitRoundComposition("tok1", "round1", VALID_T1);
-    const again = await submitRoundComposition("tok1", "round1", VALID_T1);
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
+    const again = await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     expect(again.ok).toBe(false);
     if (!again.ok) expect(again.message).toMatch(/έχει ήδη υποβληθεί/);
     expect(h.db.T("round_compositions")).toHaveLength(1);
@@ -145,7 +148,7 @@ describe("Στάδιο 2 — υποβολή σύνθεσης", () => {
     const bad = JSON.stringify([
       { board: 1, player_id: "a1" }, { board: 2, player_id: "a3" }, { board: 3, player_id: "a5" }, { board: 4, player_id: "a1x" },
     ]);
-    const res = await submitRoundComposition("tok1", "round1", bad);
+    const res = await submitRoundComposition("tok1", undefined, "round1", bad);
     expect(res.ok).toBe(false);
     expect(h.db.T("round_compositions")).toHaveLength(0);
   });
@@ -154,7 +157,7 @@ describe("Στάδιο 2 — υποβολή σύνθεσης", () => {
     const bad = JSON.stringify([
       { board: 1, player_id: "a3" }, { board: 2, player_id: "a1" }, { board: 3, player_id: "a5" }, { board: 4, player_id: "a2" },
     ]);
-    const res = await submitRoundComposition("tok1", "round1", bad);
+    const res = await submitRoundComposition("tok1", undefined, "round1", bad);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.message).toMatch(/σειρά/);
   });
@@ -163,7 +166,7 @@ describe("Στάδιο 2 — υποβολή σύνθεσης", () => {
     const bad = JSON.stringify([
       { board: 1, player_id: "a3" }, { board: 2, player_id: "a5" }, { board: 3, player_id: "a2x" }, { board: 4, player_id: "a1" },
     ]);
-    const res = await submitRoundComposition("tok1", "round1", bad);
+    const res = await submitRoundComposition("tok1", undefined, "round1", bad);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.message).toMatch(/δεν πληροί/);
   });
@@ -172,31 +175,31 @@ describe("Στάδιο 2 — υποβολή σύνθεσης", () => {
     const bad = JSON.stringify([
       { board: 1, player_id: "b1" }, { board: 2, player_id: "a3" }, { board: 3, player_id: "a5" }, { board: 4, player_id: "a2" },
     ]);
-    const res = await submitRoundComposition("tok1", "round1", bad);
+    const res = await submitRoundComposition("tok1", undefined, "round1", bad);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.message).toMatch(/δεν ανήκει/);
   });
 
   it("μετά τη λήξη του παραθύρου δεν δέχεται υποβολή", async () => {
     setPublished(30);
-    const res = await submitRoundComposition("tok1", "round1", VALID_T1);
+    const res = await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.message).toMatch(/έχει λήξει/);
   });
 
   it("άκυρο token → σφάλμα, όχι εγγραφή", async () => {
-    const res = await submitRoundComposition("λάθος", "round1", VALID_T1);
+    const res = await submitRoundComposition("λάθος", undefined, "round1", VALID_T1);
     expect(res.ok).toBe(false);
     expect(h.db.T("round_compositions")).toHaveLength(0);
   });
 
   it("ομάδα με bye δεν μπορεί να υποβάλει", async () => {
-    const res = await submitRoundComposition("tok3", "round1", VALID_T1);
+    const res = await submitRoundComposition("tok3", undefined, "round1", VALID_T1);
     expect(res.ok).toBe(false);
   });
 
   it("μη έγκυρο JSON → σαφές μήνυμα", async () => {
-    const res = await submitRoundComposition("tok1", "round1", "{όχι json");
+    const res = await submitRoundComposition("tok1", undefined, "round1", "{όχι json");
     expect(res.ok).toBe(false);
   });
 });
@@ -220,7 +223,7 @@ describe("Λήξη παραθύρου — εφαρμογή της βασικής
   });
 
   it("δεν πειράζει σύνθεση που είχε ήδη υποβληθεί εγκαίρως", async () => {
-    await submitRoundComposition("tok1", "round1", VALID_T1);
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     setPublished(30);
     await finalizeExpiredCompositions("round1");
     const t1 = h.db.T("round_compositions").find((c: any) => c.team_id === "team1");
@@ -266,12 +269,12 @@ describe("Χειροκίνητη παράταση από τον υπεύθυνο
   it("μετά την παράταση ο αρχηγός μπορεί να υποβάλει κανονικά", async () => {
     setPublished(30);
     await extendSubmissionWindow(C, "round1", "team1", fd({ minutes: "5" }));
-    const res = await submitRoundComposition("tok1", "round1", VALID_T1);
+    const res = await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     expect(res).toEqual({ ok: true });
   });
 
   it("δεν επιτρέπεται παράταση σε ομάδα που έχει ήδη υποβάλει", async () => {
-    await submitRoundComposition("tok1", "round1", VALID_T1);
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     await expect(extendSubmissionWindow(C, "round1", "team1", fd({ minutes: "5" }))).rejects.toThrow(/έχει ήδη υποβάλει/);
   });
 
@@ -283,7 +286,7 @@ describe("Χειροκίνητη παράταση από τον υπεύθυνο
 
 describe("Σάρωση QR από τον διαιτητή", () => {
   async function bothReady() {
-    await submitRoundComposition("tok1", "round1", VALID_T1);
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     setPublished(30); // λήγει το παράθυρο της team2 → εφεδρική
   }
 
@@ -325,7 +328,7 @@ describe("Σάρωση QR από τον διαιτητή", () => {
   });
 
   it("όσο η άλλη ομάδα δεν έχει σύνθεση (παράθυρο ανοιχτό), δεν είναι έτοιμο για αποτέλεσμα", async () => {
-    await submitRoundComposition("tok1", "round1", VALID_T1);
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     const s = await resolveScan("qr3-1");
     if (s.kind !== "board") throw new Error("αναμενόταν board");
     expect(s.a.player).not.toBeNull();
@@ -336,7 +339,7 @@ describe("Σάρωση QR από τον διαιτητή", () => {
 
 describe("Καταχώρηση αποτελέσματος", () => {
   async function bothReady() {
-    await submitRoundComposition("tok1", "round1", VALID_T1);
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1);
     setPublished(30);
   }
 
@@ -393,7 +396,7 @@ describe("Καταχώρηση αποτελέσματος", () => {
   });
 
   it("δεν καταχωρεί όσο λείπει η σύνθεση μιας ομάδας", async () => {
-    await submitRoundComposition("tok1", "round1", VALID_T1); // team2 ακόμα σε αναμονή
+    await submitRoundComposition("tok1", undefined, "round1", VALID_T1); // team2 ακόμα σε αναμονή
     await expect(recordBoardResult("qr3-1", "1-0")).rejects.toThrow(/συνθέσεις/);
   });
 

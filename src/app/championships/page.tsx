@@ -54,7 +54,9 @@ export default async function ChampionshipsPage() {
                 <Link href={`/championships/${c.id}`} className="font-serif font-bold text-lg hover:text-gold">
                   {c.name}
                 </Link>
-                <span className={`shrink-0 text-xs border rounded-full px-2.5 py-1 whitespace-nowrap ${STATUS_STYLE[status]}`}>
+                <span
+                  className={`shrink-0 text-xs border rounded-full px-2.5 py-1 whitespace-nowrap ${STATUS_STYLE[status]} ${status === "open" ? "soft-glow" : ""}`}
+                >
                   {REGISTRATION_STATUS_LABEL[status]}
                 </span>
               </div>
@@ -92,6 +94,14 @@ export default async function ChampionshipsPage() {
                   Κατάταξη &amp; Αποτελέσματα →
                 </Link>
               </div>
+              {status === "open" && (
+                <Link
+                  href={`/championships/${c.id}/register`}
+                  className="mt-1 bg-gold text-bg font-semibold rounded-lg py-2 text-sm text-center hover:bg-goldSoft transition-colors"
+                >
+                  Εγγραφή Ομάδας
+                </Link>
+              )}
             </div>
           );
         })}

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createTeam, deleteTeam, setEntryFeeStatus } from "./actions";
+import { updateTeam, deleteTeam, setEntryFeeStatus } from "./actions";
 import { ENTRY_FEE_STATUS_LABEL, type EntryFeeStatus } from "@/lib/attendance/attendance";
 import TeamCertificateLink from "./TeamCertificateLink";
 import SavableForm from "@/components/SavableForm";
@@ -37,7 +37,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, status, roster_lock_deadline, captain_access_token, club_or_school_id, team_number, clubs_schools(name), attendance_certificate_original_name, entry_fee_status, entry_fee_method")
+    .select("id, status, roster_lock_deadline, roster_locked, captain_access_token, club_or_school_id, team_number, clubs_schools(name), attendance_certificate_original_name, entry_fee_status, entry_fee_method")
     .eq("competition_id", params.id)
     .order("created_at", { ascending: false });
 
@@ -101,10 +101,8 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
     mismatches = genderMismatches(athletes, sexByDir, (imports ?? 0) > 0);
   }
 
-  const boundCreate = createTeam.bind(null, params.id);
   const fieldLabel = AUDIENCE_FIELD_LABEL[audienceType];
-  const fieldExample = AUDIENCE_FIELD_EXAMPLE[audienceType];
-  const freeEntry = allowsFreeEntry(audienceType);
+  void AUDIENCE_FIELD_EXAMPLE; // δεν χρειάζεται εδώ πια — μόνο στη δημόσια εγγραφή
 
   return (
     <div className="min-h-screen px-6 py-10 max-w-2xl mx-auto flex flex-col gap-8">
@@ -134,13 +132,17 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
 
       <div className="flex flex-col gap-3">
         {(teams ?? []).map((t) => {
-          const captainUrl = `/captain/${t.captain_access_token}`;
+          const captainUrl = t.captain_access_token ? `/captain/${t.captain_access_token}` : null;
           const canDelete = !pairedTeamIds.has(t.id);
           const boundDelete = deleteTeam.bind(null, params.id, t.id);
+          const boundUpdate = updateTeam.bind(null, params.id, t.id);
           const feeStatus = (t.entry_fee_status && t.entry_fee_status in ENTRY_FEE_STATUS_LABEL
             ? t.entry_fee_status
             : "pending") as EntryFeeStatus;
           const boundSetFee = setEntryFeeStatus.bind(null, params.id, t.id);
+          const clubOptions = availableClubs.some((c) => c.id === t.club_or_school_id)
+            ? availableClubs
+            : [...availableClubs, ...(clubs ?? []).filter((c) => c.id === t.club_or_school_id)];
           return (
             <div key={t.id} className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -152,10 +154,32 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
                   Κατάθεση Βασικής Σύνθεσης έως: {new Date(t.roster_lock_deadline).toLocaleString("el-GR")}
                 </div>
               )}
-              <div className="text-xs">
-                Portal Αρχηγού:{" "}
-                <span className="text-gold break-all">{captainUrl}</span>
-              </div>
+              {captainUrl ? (
+                <div className="text-xs">
+                  Portal Αρχηγού:{" "}
+                  <span className="text-gold break-all">{captainUrl}</span>
+                </div>
+              ) : (
+                <div className="text-xs text-muted">
+                  Δηλώθηκε από τον υπεύθυνο — δεν έχει μόνιμο link ομάδας (το link του είναι προσωπικό).
+                </div>
+              )}
+              <SavableForm action={boundUpdate} successMessage="Η ομάδα ενημερώθηκε." className="flex items-center gap-2">
+                <select
+                  name="club_or_school_id"
+                  defaultValue={t.club_or_school_id}
+                  className="bg-panel border border-cardBorder rounded px-2 py-1 text-xs flex-1"
+                >
+                  {clubOptions.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-1 text-xs text-muted whitespace-nowrap">
+                  <input type="checkbox" name="roster_locked" defaultChecked={t.roster_locked} />
+                  Κλείδωμα σύνθεσης
+                </label>
+                <button type="submit" className="text-gold hover:underline text-xs">Αποθήκευση</button>
+              </SavableForm>
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-muted">Βεβαίωση:</span>
                 {t.attendance_certificate_original_name ? (
@@ -199,51 +223,10 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
         )}
       </div>
 
-      <SavableForm action={boundCreate} resetOnSuccess successMessage="Η ομάδα δημιουργήθηκε." className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
-        <div className="text-xs uppercase tracking-wide text-muted">Νέα Ομάδα</div>
-        <select
-          name="club_or_school_id"
-          required={!freeEntry}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-        >
-          <option value="">— Επιλέξτε {fieldLabel.toLowerCase()} —</option>
-          {availableClubs.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {freeEntry && (
-          <label className="flex flex-col gap-1 text-sm">
-            ή νέα {fieldLabel.toLowerCase()}
-            <input
-              name="new_team_name"
-              placeholder={fieldExample}
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 uppercase"
-            />
-          </label>
-        )}
-        <label className="flex flex-col gap-1 text-sm">
-          Κατάθεση Βασικής Σύνθεσης έως
-          <input
-            name="roster_lock_deadline"
-            type="datetime-local"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
-          />
-        </label>
-        <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
-          Δημιουργία Ομάδας
-        </button>
-        {availableClubs.length === 0 && !freeEntry && (
-          <p className="text-xs text-muted">
-            Δεν υπάρχει διαθέσιμος σύλλογος/σχολείο (ή έχουν φτάσει όλοι το όριο ομάδων) — προσθέστε πρώτα από{" "}
-            <Link href="/admin/clubs" className="text-gold underline">
-              εδώ
-            </Link>
-            .
-          </p>
-        )}
-      </SavableForm>
+      <p className="text-xs text-muted">
+        Οι ομάδες εγγράφονται από τους ίδιους τους υπευθύνους, από τη δημόσια σελίδα της
+        διοργάνωσης. Εδώ μπορείτε να επεξεργαστείτε στοιχεία ή να διαγράψετε ομάδα πριν κληρωθεί.
+      </p>
     </div>
   );
 }

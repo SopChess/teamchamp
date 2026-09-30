@@ -82,6 +82,7 @@ export function createFakeDb(config: FakeDbConfig) {
     }
     delete() { this.op = "delete"; return this; }
     eq(col: string, val: any) { this.filters.push((r) => r[col] === val); return this; }
+    neq(col: string, val: any) { this.filters.push((r) => r[col] !== val); return this; }
     in(col: string, vals: any[]) { this.filters.push((r) => vals.includes(r[col])); return this; }
     is(col: string, val: null) { this.filters.push((r) => (val === null ? r[col] == null : r[col] === val)); return this; }
     not(col: string, op: string, val: any) {

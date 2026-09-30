@@ -1,29 +1,20 @@
 "use server";
 
-import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import {
-  allowsFreeEntry,
-  clubTypeFor,
-  nextTeamNumber,
-  type AudienceType,
-} from "@/lib/teams/teams";
+import { resolveClubAndNumber } from "@/lib/teams/resolveClub";
+import { type AudienceType } from "@/lib/teams/teams";
 import { isEntryFeeStatus } from "@/lib/attendance/attendance";
 
 const CERTIFICATE_BUCKET = "attendance-certificates";
 
 /**
- * Δημιουργία ομάδας. Η συμπεριφορά εξαρτάται από το audience_type της
- * διοργάνωσης (επιβεβαιωμένο):
- *  - school / eso_club: ΜΟΝΟ επιλογή από υπάρχοντα σύλλογο/σχολείο — καμία
- *    ελεύθερη επωνυμία. Για eso_club επιτρέπονται πολλαπλές ομάδες από τον
- *    ίδιο σύλλογο μέχρι το όριο της διοργάνωσης (max_teams_per_club),
- *    εμφανίζονται ως "Όνομα", "Όνομα-2", "Όνομα-3"...
- *  - free_team: επιτρέπεται είτε επιλογή υπάρχοντος, είτε νέο όνομα επιτόπου
- *    (δημιουργείται αυτόματα η εγγραφή στον κατάλογο συλλόγων/σχολείων).
+ * Επεξεργασία ομάδας από τον admin/υπεύθυνο πρωταθλήματος: σύλλογος/σχολείο
+ * και κλείδωμα σύνθεσης. Η ΔΗΜΙΟΥΡΓΙΑ ομάδας γίνεται ΜΟΝΟ από τον ίδιο τον
+ * υπεύθυνο ομάδας, μέσω της δημόσιας φόρμας εγγραφής (επιβεβαιωμένο) — εδώ
+ * μόνο διόρθωση στοιχείων μιας ήδη δηλωμένης ομάδας.
  */
-export async function createTeam(competitionId: string, formData: FormData) {
+export async function updateTeam(competitionId: string, teamId: string, formData: FormData) {
   const supabase = createClient();
 
   const { data: competition } = await supabase
@@ -34,65 +25,20 @@ export async function createTeam(competitionId: string, formData: FormData) {
   const audienceType = (competition?.audience_type as AudienceType) ?? "eso_club";
   const maxTeamsPerClub = competition?.max_teams_per_club ?? 1;
 
-  let clubOrSchoolId = String(formData.get("club_or_school_id") ?? "");
-  const newName = String(formData.get("new_team_name") ?? "").trim().toUpperCase();
-  const rosterLockDeadline = String(formData.get("roster_lock_deadline") ?? "") || null;
+  const clubOrSchoolId = String(formData.get("club_or_school_id") ?? "");
+  const rosterLocked = formData.get("roster_locked") === "on";
 
-  if (!clubOrSchoolId && newName) {
-    if (!allowsFreeEntry(audienceType)) {
-      throw new Error("Σε αυτή τη διοργάνωση δεν επιτρέπεται ελεύθερη επωνυμία — επιλέξτε από τη λίστα.");
-    }
-    const { data: created, error: createError } = await supabase
-      .from("clubs_schools")
-      .insert({ name: newName, type: clubTypeFor(audienceType) })
-      .select("id")
-      .single();
-    if (createError) {
-      if (createError.code === "23505") {
-        throw new Error(`Υπάρχει ήδη ομάδα/σύλλογος με το όνομα «${newName}» — επιλέξτε τον από τη λίστα.`);
-      }
-      throw new Error(`Αποτυχία δημιουργίας ομάδας: ${createError.message}`);
-    }
-    clubOrSchoolId = created.id;
-  }
+  const { clubOrSchoolId: resolvedClubId, teamNumber } = await resolveClubAndNumber(
+    supabase, competitionId, audienceType, maxTeamsPerClub, clubOrSchoolId, "", teamId
+  );
 
-  if (!clubOrSchoolId) {
-    throw new Error("Επιλέξτε σύλλογο/σχολείο, ή γράψτε νέο όνομα ομάδας.");
-  }
-
-  const { data: existingTeams } = await supabase
+  const { error } = await supabase
     .from("teams")
-    .select("team_number")
-    .eq("competition_id", competitionId)
-    .eq("club_or_school_id", clubOrSchoolId);
-
-  const existingNumbers = (existingTeams ?? []).map((t) => t.team_number as number);
-  if (existingNumbers.length > 0 && audienceType !== "eso_club") {
-    throw new Error("Αυτός ο σύλλογος/σχολείο έχει ήδη ομάδα σε αυτή τη διοργάνωση.");
-  }
-  const teamNumber = nextTeamNumber(existingNumbers, audienceType === "eso_club" ? maxTeamsPerClub : 1);
-  if (teamNumber === null) {
-    throw new Error(
-      `Έχει φτάσει το μέγιστο επιτρεπόμενων ομάδων για αυτόν τον σύλλογο σε αυτή τη διοργάνωση (${maxTeamsPerClub}).`
-    );
-  }
-
-  const captainAccessToken = randomBytes(16).toString("hex");
-
-  const { error } = await supabase.from("teams").insert({
-    competition_id: competitionId,
-    club_or_school_id: clubOrSchoolId,
-    team_number: teamNumber,
-    roster_lock_deadline: rosterLockDeadline,
-    captain_access_token: captainAccessToken,
-    status: "declared",
-  });
+    .update({ club_or_school_id: resolvedClubId, team_number: teamNumber, roster_locked: rosterLocked })
+    .eq("id", teamId);
 
   if (error) {
-    if (error.code === "23505") {
-      throw new Error("Αυτή η ομάδα υπάρχει ήδη σε αυτή τη διοργάνωση.");
-    }
-    throw new Error(`Αποτυχία δημιουργίας ομάδας: ${error.message}`);
+    throw new Error(`Αποτυχία ενημέρωσης: ${error.message}`);
   }
 
   revalidatePath(`/admin/${competitionId}/teams`);
