@@ -29,7 +29,7 @@ export async function updateTeam(competitionId: string, teamId: string, formData
   const rosterLocked = formData.get("roster_locked") === "on";
 
   const { clubOrSchoolId: resolvedClubId, teamNumber } = await resolveClubAndNumber(
-    supabase, competitionId, audienceType, maxTeamsPerClub, clubOrSchoolId, "", teamId
+    supabase, competitionId, audienceType, maxTeamsPerClub, clubOrSchoolId, "", undefined, teamId
   );
 
   const { error } = await supabase

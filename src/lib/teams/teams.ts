@@ -30,9 +30,20 @@ export function clubTypeFor(audience: AudienceType): "club" | "school" {
   return audience === "school" ? "school" : "club";
 }
 
-/** Μόνο σε διοργανώσεις ελεύθερης επωνυμίας επιτρέπεται καινούργιο όνομα επιτόπου. */
-export function allowsFreeEntry(audience: AudienceType): boolean {
-  return audience === "free_team";
+/**
+ * Ο υπεύθυνος ΓΡΑΦΕΙ πάντα ο ίδιος το όνομα της ομάδας/συλλόγου/σχολείου στην
+ * εγγραφή (επιβεβαιωμένο) — δεν υπάρχει προ-καταχωρημένη λίστα να διαλέξει.
+ * Αν το ίδιο όνομα υπάρχει ήδη (π.χ. δεύτερη ομάδα του ίδιου συλλόγου, ή
+ * επιστροφή σε νέα διοργάνωση), αναγνωρίζεται αυτόματα — δεν δημιουργείται
+ * διπλότυπο. Ο admin διορθώνει/συγχωνεύει μετά, δεν προεγκρίνει πριν.
+ */
+export function allowsFreeEntry(_audience: AudienceType): boolean {
+  return true;
+}
+
+/** Μόνο οι σύλλογοι ΕΣΟ έχουν κωδικό (τον ζητάμε στην εγγραφή για επιβεβαίωση ότι είναι πραγματικό μέλος). */
+export function requiresEsoCode(audience: AudienceType): boolean {
+  return audience === "eso_club";
 }
 
 export function teamDisplayName(clubName: string, teamNumber: number): string {

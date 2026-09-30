@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { registerTeam } from "./actions";
+import { searchDirectoryForRegistration, searchDirectoryByNumberForRegistration } from "./directorySearch";
 import { registrationStatus } from "@/lib/competitions/registration";
-import {
-  allowsFreeEntry, clubTypeFor, AUDIENCE_FIELD_LABEL, AUDIENCE_FIELD_EXAMPLE, type AudienceType,
-} from "@/lib/teams/teams";
+import { AUDIENCE_FIELD_LABEL, AUDIENCE_FIELD_EXAMPLE, requiresEsoCode, type AudienceType } from "@/lib/teams/teams";
 import SavableForm from "@/components/SavableForm";
+import AthletePicker from "./AthletePicker";
+import type { RosterRules } from "@/lib/rosterRules/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -25,13 +26,13 @@ export default async function RegisterPage({ params }: { params: { id: string } 
   const audienceType = (competition.audience_type as AudienceType) ?? "eso_club";
   const fieldLabel = AUDIENCE_FIELD_LABEL[audienceType];
   const fieldExample = AUDIENCE_FIELD_EXAMPLE[audienceType];
-  const freeEntry = allowsFreeEntry(audienceType);
+  const needsEsoCode = requiresEsoCode(audienceType);
 
-  const { data: clubs } = await supabase
-    .from("clubs_schools")
-    .select("id, name")
-    .eq("type", clubTypeFor(audienceType))
-    .order("name");
+  const { data: rules } = await supabase
+    .from("roster_rules")
+    .select("assignment_mode, roster_size, match_board_count, board_rules, reserve_count, one_player_per_category")
+    .eq("competition_id", params.id)
+    .maybeSingle<RosterRules>();
 
   const boundRegister = registerTeam.bind(null, params.id);
 
@@ -51,70 +52,71 @@ export default async function RegisterPage({ params }: { params: { id: string } 
       ) : (
         <SavableForm
           action={boundRegister}
-          successMessage="Η εγγραφή καταχωρήθηκε — μεταφορά στο Portal σας..."
+          successMessage="Η εγγραφή καταχωρήθηκε — μεταφορά στο Team Portal σας..."
           className="flex flex-col gap-4"
         >
-          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3">
+          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
             <div className="text-xs uppercase tracking-wide text-muted">{fieldLabel}</div>
-            <select
-              name="club_or_school_id"
-              required={!freeEntry}
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">— Επιλέξτε {fieldLabel.toLowerCase()} —</option>
-              {(clubs ?? []).map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            {freeEntry && (
-              <label className="flex flex-col gap-1 text-sm">
-                ή νέα {fieldLabel.toLowerCase()}
-                <input
-                  name="new_team_name"
-                  placeholder={fieldExample}
-                  className="bg-panel border border-cardBorder rounded-lg px-3 py-2 uppercase"
-                />
-              </label>
+            <input
+              name="new_team_name"
+              required
+              placeholder={fieldExample}
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm uppercase"
+            />
+            {needsEsoCode && (
+              <input
+                name="eso_code"
+                required
+                placeholder="Κωδικός ΕΣΟ του συλλόγου"
+                className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+              />
             )}
-          </div>
-
-          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3">
-            <div className="text-xs uppercase tracking-wide text-muted">Στοιχεία Υπευθύνου</div>
-            <div className="flex gap-2">
-              <input
-                name="first_name" required placeholder="Όνομα (λατινικά)"
-                className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-              />
-              <input
-                name="last_name" required placeholder="Επώνυμο (λατινικά)"
-                className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-              />
-            </div>
-            <input
-              name="phone" required placeholder="Τηλέφωνο" type="tel"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-            />
-            <input
-              name="email" required placeholder="Email" type="email"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-            />
             <p className="text-xs text-muted">
-              Αν είστε ήδη υπεύθυνος άλλης ομάδας με το ίδιο email και τηλέφωνο, θα βλέπετε όλες τις
-              ομάδες σας από το ίδιο link.
+              Αν ο σύλλογος/σχολείο έχει ήδη καταχωρηθεί με το ίδιο ακριβώς όνομα, θα αναγνωριστεί
+              αυτόματα — δεν χρειάζεται να ελέγξετε εσείς αν υπάρχει ήδη.
             </p>
           </div>
 
+          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
+            <div className="text-xs uppercase tracking-wide text-muted">Στοιχεία Υπευθύνου</div>
+            <div className="flex gap-2">
+              <input name="first_name" required placeholder="Όνομα (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
+              <input name="last_name" required placeholder="Επώνυμο (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
+            </div>
+            <input name="phone" required placeholder="Τηλέφωνο" type="tel" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />
+            <input name="email" required placeholder="Email" type="email" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />
+            <p className="text-xs text-muted">
+              Αν είστε ήδη υπεύθυνος άλλης ομάδας με το ίδιο email και τηλέφωνο, θα βλέπετε όλες τις
+              ομάδες σας από το ίδιο Team Portal.
+            </p>
+          </div>
+
+          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
+            <div className="text-xs uppercase tracking-wide text-muted">Αθλητές</div>
+            <AthletePicker
+              search={searchDirectoryForRegistration}
+              searchByNumber={searchDirectoryByNumberForRegistration}
+              rules={rules ?? null}
+            />
+          </div>
+
           <button type="submit" className="bg-gold text-bg font-semibold rounded-xl py-3 text-sm">
-            Εγγραφή
+            Ολοκλήρωση Εγγραφής
           </button>
 
           <p className="text-xs text-muted">
-            Μετά την εγγραφή θα μεταφερθείτε αμέσως στο προσωπικό σας Portal για να προσθέσετε τους
-            αθλητές της ομάδας. Θα λάβετε και email με το link, για μελλοντική πρόσβαση. Μπορείτε να
-            επεξεργάζεστε την ομάδα σας μέχρι την προθεσμία εγγραφών.
+            Θα λάβετε email με τα στοιχεία της διοργάνωσης και σύνδεσμο προς το Team Portal σας.
+            Μπορείτε να επεξεργάζεστε την ομάδα σας μέχρι την προθεσμία εγγραφών.
           </p>
         </SavableForm>
       )}
+
+      <p className="text-xs text-muted text-center">
+        Έχετε ήδη εγγράψει ομάδα και χάσατε το link;{" "}
+        <Link href="/captain/recover" className="text-gold underline">
+          Ανάκτηση link
+        </Link>
+      </p>
     </div>
   );
 }

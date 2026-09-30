@@ -60,32 +60,66 @@ function emailWrapper(content: string): string {
   </div>`;
 }
 
+export interface CaptainAccessEmailInfo {
+  teamName: string;
+  competitionName: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  venue: string | null;
+  portalUrl: string;
+}
+
+function formatDateRange(startsOn: string | null, endsOn: string | null): string | null {
+  const fmt = (d: string) => new Date(d).toLocaleDateString("el-GR");
+  if (startsOn && endsOn && startsOn !== endsOn) return `${fmt(startsOn)} – ${fmt(endsOn)}`;
+  if (startsOn) return fmt(startsOn);
+  if (endsOn) return fmt(endsOn);
+  return null;
+}
+
 /**
- * Το προσωπικό link πρόσβασης στο Portal Αρχηγού, μετά την εγγραφή ομάδας.
- * Αν ο υπεύθυνος έχει και άλλες ομάδες, το ίδιο link τις δείχνει όλες.
+ * Επιβεβαίωση εγγραφής ομάδας: στοιχεία του τουρνουά (όχι γυμνό link) και ένα
+ * ξεχωριστό κουμπί "Team Portal" προς τη διαχείριση — κληρώσεις, αποτελέσματα,
+ * υποβολή σύνθεσης ανά γύρο, ό,τι άλλο προβλέπει η εφαρμογή (επιβεβαιωμένο).
+ * Αν ο υπεύθυνος έχει και άλλες ομάδες, το ίδιο κουμπί τις δείχνει όλες.
  */
 export async function sendCaptainAccessEmail(
   email: string,
   captainFirstName: string,
-  teamName: string,
-  link: string
+  info: CaptainAccessEmailInfo
 ): Promise<boolean> {
+  const dates = formatDateRange(info.startsOn, info.endsOn);
+  const detailsHtml = [
+    `<tr><td style="padding:4px 0;color:#666">Διοργάνωση</td><td style="padding:4px 0;font-weight:bold">${escapeHtml(info.competitionName)}</td></tr>`,
+    `<tr><td style="padding:4px 0;color:#666">Ομάδα</td><td style="padding:4px 0;font-weight:bold">${escapeHtml(info.teamName)}</td></tr>`,
+    dates ? `<tr><td style="padding:4px 0;color:#666">Ημερομηνίες</td><td style="padding:4px 0">${escapeHtml(dates)}</td></tr>` : "",
+    info.venue ? `<tr><td style="padding:4px 0;color:#666">Χώρος αγώνων</td><td style="padding:4px 0">${escapeHtml(info.venue)}</td></tr>` : "",
+  ].join("");
+
   const html = emailWrapper(`
     <p>Αγαπητέ/ή <b>${escapeHtml(captainFirstName)}</b>,</p>
-    <p>Η εγγραφή της ομάδας <b>${escapeHtml(teamName)}</b> καταχωρήθηκε με επιτυχία.</p>
-    <p>Το προσωπικό σας link πρόσβασης στο Portal Αρχηγού:</p>
-    <p><a href="${link}" style="color:#0f2540;font-weight:bold">${link}</a></p>
+    <p>Η εγγραφή της ομάδας σας καταχωρήθηκε με επιτυχία.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0">${detailsHtml}</table>
+    <div style="text-align:center;margin:28px 0">
+      <a href="${info.portalUrl}" style="background:#c9a15a;color:#0f2540;font-weight:bold;text-decoration:none;
+        padding:12px 28px;border-radius:10px;display:inline-block">Team Portal</a>
+    </div>
     <p style="font-size:0.9em;color:#666">
-      Ανοίξτε το μία φορά σε κάθε συσκευή που θέλετε να χρησιμοποιήσετε. Είναι προσωπικό —
-      παρακαλούμε μην το προωθήσετε σε τρίτους. Μέσα από αυτό μπορείτε να διαχειρίζεστε τη
-      σύνθεση της ομάδας σας μέχρι την προθεσμία εγγραφών.
+      Από το Team Portal διαχειρίζεστε τη σύνθεση της ομάδας σας, βλέπετε κληρώσεις και αποτελέσματα,
+      και υποβάλλετε τη σύνθεση κάθε γύρου. Ανοίξτε το κουμπί μία φορά σε κάθε συσκευή που θέλετε να
+      χρησιμοποιήσετε — είναι προσωπικό, παρακαλούμε μην το προωθήσετε σε τρίτους. Μπορείτε να
+      επεξεργάζεστε τη βασική σύνθεση της ομάδας μέχρι την προθεσμία εγγραφών.
     </p>
   `);
   const text =
-    `Η εγγραφή της ομάδας ${teamName} καταχωρήθηκε με επιτυχία.\n\n` +
-    `Το προσωπικό σας link πρόσβασης: ${link}\n\n` +
+    `Η εγγραφή της ομάδας σας καταχωρήθηκε με επιτυχία.\n\n` +
+    `Διοργάνωση: ${info.competitionName}\n` +
+    `Ομάδα: ${info.teamName}\n` +
+    (dates ? `Ημερομηνίες: ${dates}\n` : "") +
+    (info.venue ? `Χώρος αγώνων: ${info.venue}\n` : "") +
+    `\nTeam Portal: ${info.portalUrl}\n\n` +
     `Ανοίξτε το μία φορά σε κάθε συσκευή. Είναι προσωπικό — μην το προωθήσετε σε τρίτους.`;
-  return sendEmail(email, `Επιβεβαίωση Εγγραφής — ${teamName}`, html, text);
+  return sendEmail(email, `Επιβεβαίωση Εγγραφής — ${info.teamName}`, html, text);
 }
 
 /** Το προσωπικό link πρόσβασης για το επιτελείο διοργάνωσης (admin/υπεύθυνος/διαιτητής). */

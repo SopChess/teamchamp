@@ -35,6 +35,26 @@ describe("SavableForm — επιτυχία", () => {
     expect(action).toHaveBeenCalledTimes(1);
   });
 
+  it("απενεργοποιεί τα πεδία της φόρμας όσο εκτελείται (προστασία από διπλό κλικ)", async () => {
+    const user = userEvent.setup();
+    let resolve!: () => void;
+    const action = vi.fn(() => new Promise<void>((r) => { resolve = r; }));
+    render(<Form action={action} />);
+
+    // Το πραγματικό ενδιαφέρον είναι το <fieldset disabled> γύρω από τα πεδία — αυτό είναι στάνταρ HTML
+    // συμπεριφορά (απενεργοποιεί ΟΛΑ τα εσωτερικά πεδία/κουμπιά σε κάθε πραγματικό browser)· το jsdom
+    // δεν προσομοιώνει πλήρως την κληρονομικότητα προς τα παιδιά, οπότε ελέγχουμε το ίδιο το fieldset.
+    const button = screen.getByText("Αποθήκευση") as HTMLButtonElement;
+    const input = screen.getByDisplayValue("Αρχικό") as HTMLInputElement;
+    await user.click(button);
+    const fieldset = await screen.findByText("Αποθήκευση...").then(() => input.closest("fieldset")!);
+    expect(fieldset.disabled).toBe(true);
+
+    resolve();
+    await waitFor(() => expect(fieldset.disabled).toBe(false));
+    expect(action).toHaveBeenCalledTimes(1); // δεν διπλοκλήθηκε ενώ ήταν κλειδωμένο
+  });
+
   it("χρησιμοποιεί το προσαρμοσμένο μήνυμα επιτυχίας", async () => {
     const user = userEvent.setup();
     const action = vi.fn(async () => undefined);

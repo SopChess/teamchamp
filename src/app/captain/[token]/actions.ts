@@ -106,7 +106,13 @@ export type AddAthleteResult = { ok: true } | { ok: false; message: string };
  * ΔΙΠΛΗ ΕΓΓΡΑΦΗ σε όλη τη διοργάνωση (όχι μόνο στη δική σας ομάδα), και υπολογίζει
  * σωστά την επόμενη θέση.
  */
-async function addAthleteToTeam(
+/**
+ * Προσθήκη αθλητή σε ομάδα: όριο μεγέθους ρόστερ + έλεγχος διπλής εγγραφής μέσα
+ * στη διοργάνωση + επαναχρησιμοποίηση υπάρχουσας εγγραφής καταλόγου. Εξάγεται
+ * ώστε να τη χρησιμοποιεί και η δημόσια εγγραφή ομάδας (register/actions.ts),
+ * ακριβώς την ίδια λογική με το Portal Αρχηγού — όχι ξεχωριστή υλοποίηση.
+ */
+export async function addAthleteToTeam(
   team: { id: string; competition_id: string },
   fields: Omit<PlayerFields, "directory_id"> & { directory_id: string | null }
 ): Promise<AddAthleteResult> {

@@ -53,16 +53,49 @@ describe("sendEmail — με credentials", () => {
     );
   });
 
-  it("sendCaptainAccessEmail: θέμα με το όνομα ομάδας, link μέσα στο HTML, ονόματα ξεφεύγουν σωστά", async () => {
+  it("sendCaptainAccessEmail: θέμα με το όνομα ομάδας, στοιχεία τουρνουά, κουμπί Team Portal, ονόματα ξεφεύγουν σωστά", async () => {
     const { sendCaptainAccessEmail } = await import("./email");
-    await sendCaptainAccessEmail("cap@example.gr", "Γιώργος <script>", "Σ.Ο. Πολίχνης", "https://teamchamp.vercel.app/captain/abc123");
+    await sendCaptainAccessEmail("cap@example.gr", "Γιώργος <script>", {
+      teamName: "Σ.Ο. Πολίχνης",
+      competitionName: "18ο Πανελλήνιο",
+      startsOn: "2026-11-01",
+      endsOn: "2026-11-03",
+      venue: "Εκπαιδευτήρια Μαντουλίδη",
+      portalUrl: "https://teamchamp.vercel.app/captain/abc123",
+    });
     const [call] = sendMail.mock.calls[0]!;
     expect(call.to).toBe("cap@example.gr");
     expect(call.subject).toContain("Σ.Ο. Πολίχνης");
+    expect(call.html).toContain("Team Portal");
+    expect(call.html).toContain("18ο Πανελλήνιο");
+    expect(call.html).toContain("Εκπαιδευτήρια Μαντουλίδη");
     expect(call.html).toContain("https://teamchamp.vercel.app/captain/abc123");
     expect(call.html).not.toContain("<script>");
     expect(call.html).toContain("&lt;script&gt;");
     expect(call.text).toContain("https://teamchamp.vercel.app/captain/abc123");
+    expect(call.text).toContain("18ο Πανελλήνιο");
+  });
+
+  it("sendCaptainAccessEmail: χωρίς ημερομηνίες/χώρο, δεν εμφανίζει κενές γραμμές", async () => {
+    const { sendCaptainAccessEmail } = await import("./email");
+    await sendCaptainAccessEmail("cap@example.gr", "Μαρία", {
+      teamName: "Κασκαντέρ", competitionName: "Δοκιμή", startsOn: null, endsOn: null, venue: null,
+      portalUrl: "https://teamchamp.vercel.app/captain/xyz",
+    });
+    const [call] = sendMail.mock.calls[0]!;
+    expect(call.html).not.toContain("Ημερομηνίες");
+    expect(call.html).not.toContain("Χώρος αγώνων");
+  });
+
+  it("sendCaptainAccessEmail: ίδια ημερομηνία έναρξης/λήξης εμφανίζεται μία φορά", async () => {
+    const { sendCaptainAccessEmail } = await import("./email");
+    await sendCaptainAccessEmail("cap@example.gr", "Μαρία", {
+      teamName: "Χ", competitionName: "Δ", startsOn: "2026-11-01", endsOn: "2026-11-01", venue: null,
+      portalUrl: "https://teamchamp.vercel.app/captain/xyz",
+    });
+    const [call] = sendMail.mock.calls[0]!;
+    const count = (String(call.html).match(/1\/11\/2026/g) || []).length;
+    expect(count).toBe(1);
   });
 
   it("sendStaffAccessEmail: το link εμφανίζεται σε html και text", async () => {

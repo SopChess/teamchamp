@@ -59,7 +59,9 @@ export default function SavableForm({ action, children, className, successMessag
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className={className}>
-      {children}
+      <fieldset disabled={pending} className="contents border-0 p-0 m-0 min-w-0">
+        {children}
+      </fieldset>
       <div role="status" aria-live="polite">
         {pending && <p className="text-xs text-muted mt-2">Αποθήκευση...</p>}
         {!pending && status === "success" && <p className="text-xs text-good mt-2">✓ {message}</p>}

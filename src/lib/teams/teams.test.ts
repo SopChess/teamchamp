@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allowsFreeEntry, clubTypeFor, nextTeamNumber, parseNumberedName, teamDisplayName } from "./teams";
+import { allowsFreeEntry, clubTypeFor, nextTeamNumber, parseNumberedName, requiresEsoCode, teamDisplayName } from "./teams";
 
 describe("teamDisplayName", () => {
   it("η πρώτη ομάδα δεν παίρνει αριθμό", () => {
@@ -47,17 +47,28 @@ describe("parseNumberedName", () => {
   });
 });
 
-describe("clubTypeFor / allowsFreeEntry", () => {
-  it("σχολεία → type school, χωρίς ελεύθερη επωνυμία", () => {
+describe("clubTypeFor", () => {
+  it("σχολεία → type school", () => {
     expect(clubTypeFor("school")).toBe("school");
-    expect(allowsFreeEntry("school")).toBe(false);
   });
-  it("ΕΣΟ → type club, χωρίς ελεύθερη επωνυμία", () => {
+  it("ΕΣΟ και ελεύθερη επωνυμία → type club", () => {
     expect(clubTypeFor("eso_club")).toBe("club");
-    expect(allowsFreeEntry("eso_club")).toBe(false);
-  });
-  it("ελεύθερη επωνυμία → type club, επιτρέπεται νέο όνομα", () => {
     expect(clubTypeFor("free_team")).toBe("club");
+  });
+});
+
+describe("allowsFreeEntry — πάντα ο ίδιος γράφει το όνομα, σε όλους τους τύπους", () => {
+  it("και στους τρεις τύπους", () => {
+    expect(allowsFreeEntry("school")).toBe(true);
+    expect(allowsFreeEntry("eso_club")).toBe(true);
     expect(allowsFreeEntry("free_team")).toBe(true);
+  });
+});
+
+describe("requiresEsoCode", () => {
+  it("μόνο οι σύλλογοι ΕΣΟ", () => {
+    expect(requiresEsoCode("eso_club")).toBe(true);
+    expect(requiresEsoCode("school")).toBe(false);
+    expect(requiresEsoCode("free_team")).toBe(false);
   });
 });
