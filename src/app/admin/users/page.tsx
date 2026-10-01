@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ACCESS_COOKIE } from "@/lib/access";
-import { createAccessUser, setAccessActive } from "./actions";
+import { createAccessUser, setAccessActive, resendAccessEmail } from "./actions";
 import CopyLinkButton from "./CopyLinkButton";
 import SavableForm from "@/components/SavableForm";
 
@@ -44,8 +44,9 @@ export default async function UsersPage() {
         </Link>
         <h1 className="font-serif font-bold text-2xl mt-2">Χρήστες &amp; Πρόσβαση</h1>
         <p className="text-xs text-muted mt-1">
-          Κάθε χρήστης έχει ένα προσωπικό link. Το link λειτουργεί σαν κωδικός — παρακαλούμε μην το
-          κοινοποιείτε σε τρίτους.
+          Κάθε χρήστης έχει ένα προσωπικό link — λειτουργεί σαν κωδικός, μην το κοινοποιείτε σε
+          τρίτους. Στέλνεται αυτόματα με email κατά τη δημιουργία (με περιεχόμενο ανάλογο του ρόλου),
+          και μπορείτε να το ξαναστείλετε όποτε χρειαστεί.
         </p>
       </div>
 
@@ -79,8 +80,15 @@ export default async function UsersPage() {
                 ? ` · ${u.competition_ids.map(compName).join(", ")}`
                 : ""}
             </div>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
               {u.active && <CopyLinkButton token={u.token} />}
+              {u.active && u.email && (
+                <SavableForm action={resendAccessEmail.bind(null, u.id, u.token, u.email, u.role)} successMessage="Το email στάλθηκε.">
+                  <button type="submit" className="text-xs bg-panel border border-cardBorder rounded-lg px-3 py-1.5">
+                    Επαναποστολή email
+                  </button>
+                </SavableForm>
+              )}
               <SavableForm action={setAccessActive.bind(null, u.id, !u.active)}>
                 <button
                   type="submit"

@@ -105,4 +105,33 @@ describe("sendEmail — με credentials", () => {
     expect(call.html).toContain("https://teamchamp.vercel.app/access/xyz");
     expect(call.text).toContain("https://teamchamp.vercel.app/access/xyz");
   });
+
+  it("sendRoleAccessEmail: διαφορετικό θέμα και περιεχόμενο ανά ρόλο", async () => {
+    const { sendRoleAccessEmail } = await import("./email");
+    await sendRoleAccessEmail("referee", "ref@example.gr", "https://teamchamp.vercel.app/access/r1");
+    const [refCall] = sendMail.mock.calls[0]!;
+    expect(refCall.subject).toContain("Διαιτητή");
+    expect(refCall.html).toContain("σαρώστε το QR");
+
+    sendMail.mockClear();
+    await sendRoleAccessEmail("tournament_admin", "ta@example.gr", "https://teamchamp.vercel.app/access/t1");
+    const [taCall] = sendMail.mock.calls[0]!;
+    expect(taCall.subject).toContain("Υπευθύνου Πρωταθλήματος");
+    expect(taCall.html).toContain("κληρώσεις");
+    expect(taCall.html).not.toContain("σαρώστε το QR");
+
+    sendMail.mockClear();
+    await sendRoleAccessEmail("super_admin", "sa@example.gr", "https://teamchamp.vercel.app/access/s1");
+    const [saCall] = sendMail.mock.calls[0]!;
+    expect(saCall.subject).toContain("Διαχειριστή");
+    expect(saCall.html).toContain("πλήρης πρόσβαση");
+  });
+
+  it("sendRoleAccessEmail: το link εμφανίζεται σε html και text, για κάθε ρόλο", async () => {
+    const { sendRoleAccessEmail } = await import("./email");
+    await sendRoleAccessEmail("super_admin", "sa@example.gr", "https://teamchamp.vercel.app/access/abc");
+    const [call] = sendMail.mock.calls[0]!;
+    expect(call.html).toContain("https://teamchamp.vercel.app/access/abc");
+    expect(call.text).toContain("https://teamchamp.vercel.app/access/abc");
+  });
 });

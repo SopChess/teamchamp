@@ -139,6 +139,52 @@ export async function sendStaffAccessEmail(email: string, link: string): Promise
   return sendEmail(email, "Το προσωπικό σας link πρόσβασης — Team ALMA", html, text);
 }
 
+export type StaffRole = "super_admin" | "tournament_admin" | "referee";
+
+const ROLE_INTRO: Record<StaffRole, string> = {
+  super_admin:
+    "Σας δόθηκε πρόσβαση διαχειριστή στο Team ALMA — πλήρης πρόσβαση σε όλες τις διοργανώσεις, " +
+    "συλλόγους/σχολεία, ομάδες και χρήστες.",
+  tournament_admin:
+    "Σας δόθηκε πρόσβαση υπευθύνου πρωταθλήματος στο Team ALMA — μπορείτε να διαχειρίζεστε τις " +
+    "κληρώσεις, να καταχωρείτε αποτελέσματα και να επεξεργάζεστε τις ομάδες της διοργάνωσης/ων που " +
+    "σας έχουν ανατεθεί.",
+  referee:
+    "Σας δόθηκε πρόσβαση διαιτητή στο Team ALMA. Στην αίθουσα αγώνων, σαρώστε το QR της κάθε " +
+    "σκακιέρας (Συνάντηση/Σκακιέρα) με το κινητό σας — θα ανοίξει απευθείας τη σελίδα καταχώρησης " +
+    "του αποτελέσματος. Δεν χρειάζεται να ανοίξετε το link παρακάτω για να σαρώσετε — είναι μόνο για " +
+    "αναφορά, σε περίπτωση που χρειαστεί.",
+};
+
+const ROLE_SUBJECT: Record<StaffRole, string> = {
+  super_admin: "Πρόσβαση Διαχειριστή — Team ALMA",
+  tournament_admin: "Πρόσβαση Υπευθύνου Πρωταθλήματος — Team ALMA",
+  referee: "Πρόσβαση Διαιτητή — Team ALMA",
+};
+
+/**
+ * Προσωπικό link πρόσβασης του επιτελείου, με περιεχόμενο προσαρμοσμένο στον
+ * ρόλο (επιβεβαιωμένο) — ο admin το δημιουργεί και το στέλνει, καμία δημόσια
+ * φόρμα αιτήματος δεν χρειάζεται πια στην αρχική σελίδα.
+ */
+export async function sendRoleAccessEmail(role: StaffRole, email: string, link: string): Promise<boolean> {
+  const intro = ROLE_INTRO[role];
+  const html = emailWrapper(`
+    <p>${intro}</p>
+    <p>Το προσωπικό σας link:</p>
+    <p><a href="${link}" style="color:#0f2540;font-weight:bold">${link}</a></p>
+    <p style="font-size:0.9em;color:#666">
+      Ανοίξτε το μία φορά σε κάθε συσκευή που θέλετε να χρησιμοποιήσετε. Είναι προσωπικό —
+      παρακαλούμε μην το προωθήσετε σε τρίτους.
+    </p>
+  `);
+  const text =
+    `${intro}\n\nΤο προσωπικό σας link: ${link}\n\n` +
+    `Ανοίξτε το μία φορά σε κάθε συσκευή που θέλετε να χρησιμοποιήσετε. ` +
+    `Είναι προσωπικό — παρακαλούμε μην το προωθήσετε σε τρίτους.`;
+  return sendEmail(email, ROLE_SUBJECT[role], html, text);
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }

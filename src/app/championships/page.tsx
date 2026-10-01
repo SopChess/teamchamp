@@ -61,27 +61,41 @@ export default async function ChampionshipsPage() {
                 </span>
               </div>
 
-              <div className="text-sm text-muted flex flex-col gap-1">
-                {dates && <div>📅 {dates}</div>}
+              <div className="text-sm text-muted flex flex-col gap-1.5">
+                {dates && (
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" />
+                    </svg>
+                    {dates}
+                  </div>
+                )}
                 {c.venue && (
-                  <div>
-                    📍 {c.venue}
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M12 21s7-6.4 7-12a7 7 0 1 0-14 0c0 5.6 7 12 7 12Z" /><circle cx="12" cy="9" r="2.3" />
+                    </svg>
+                    {c.venue}
                     {c.venue_maps_url && (
-                      <>
-                        {" "}
-                        <a
-                          href={c.venue_maps_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-gold underline"
-                        >
-                          (Google Maps)
-                        </a>
-                      </>
+                      <a
+                        href={c.venue_maps_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-gold underline"
+                      >
+                        (Google Maps)
+                      </a>
                     )}
                   </div>
                 )}
-                {deadline && <div>⏱ Προθεσμία εγγραφών: {deadline}</div>}
+                {deadline && (
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" />
+                    </svg>
+                    Προθεσμία εγγραφών: {deadline}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-4 mt-1">

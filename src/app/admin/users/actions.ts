@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ACCESS_COOKIE } from "@/lib/access";
 import { isValidEmail, normalizeEmail } from "@/lib/accessRequest";
+import { sendRoleAccessEmail, type StaffRole } from "@/lib/email";
+
+function isStaffRole(r: string): r is StaffRole {
+  return r === "super_admin" || r === "tournament_admin" || r === "referee";
+}
 
 const ROLES = ["super_admin", "tournament_admin", "referee"];
 
@@ -34,7 +39,7 @@ export async function createAccessUser(formData: FormData) {
     throw new Error("Επιλέξτε τουλάχιστον ένα πρωτάθλημα για αυτόν τον ρόλο.");
   }
 
-  const { error } = await supabase.rpc("admin_create_access", {
+  const { data: newToken, error } = await supabase.rpc("admin_create_access", {
     p_admin_token: adminToken(),
     p_email: email,
     p_label: label,
@@ -49,7 +54,27 @@ export async function createAccessUser(formData: FormData) {
     throw new Error(`Αποτυχία δημιουργίας χρήστη: ${error.message}`);
   }
 
+  // Η αποστολή είναι best-effort — ο χρήστης έχει ήδη δημιουργηθεί κανονικά ακόμα κι αν αποτύχει.
+  if (newToken && isStaffRole(role)) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://teamchamp.vercel.app";
+    try {
+      await sendRoleAccessEmail(role, email, `${siteUrl}/access/${newToken}`);
+    } catch (e) {
+      console.error("Αποστολή email πρόσβασης απέτυχε:", e);
+    }
+  }
+
   revalidatePath("/admin/users");
+}
+
+/** Επαναποστολή του ΙΔΙΟΥ link — π.χ. αν ο χρήστης το έχασε. Δεν αλλάζει το token. */
+export async function resendAccessEmail(id: string, token: string, email: string | null, role: string): Promise<void> {
+  if (!email) throw new Error("Αυτός ο χρήστης δεν έχει καταχωρημένο email.");
+  if (!isStaffRole(role)) throw new Error("Άγνωστος ρόλος.");
+  void id; // δεν χρειάζεται εδώ (το token αρκεί) — κρατιέται στην υπογραφή για ευκρίνεια στο σημείο κλήσης
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://teamchamp.vercel.app";
+  const ok = await sendRoleAccessEmail(role, email, `${siteUrl}/access/${token}`);
+  if (!ok) throw new Error("Η αποστολή email δεν είναι ενεργή (λείπουν τα στοιχεία Gmail).");
 }
 
 export async function setAccessActive(id: string, active: boolean) {
