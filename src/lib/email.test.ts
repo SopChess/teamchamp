@@ -127,6 +127,15 @@ describe("sendEmail — με credentials", () => {
     expect(saCall.html).toContain("πλήρης πρόσβαση");
   });
 
+  it("sendTeamUpdatedEmail: εμφανίζει τη νέα επωνυμία σε html και text", async () => {
+    const { sendTeamUpdatedEmail } = await import("./email");
+    await sendTeamUpdatedEmail("captain@example.gr", "Σ.Ο. Διορθωμένο");
+    const [call] = sendMail.mock.calls[0]!;
+    expect(call.subject).toContain("Ενημέρωση για την ομάδα σας");
+    expect(call.html).toContain("Σ.Ο. Διορθωμένο");
+    expect(call.text).toContain("Σ.Ο. Διορθωμένο");
+  });
+
   it("sendRoleAccessEmail: το link εμφανίζεται σε html και text, για κάθε ρόλο", async () => {
     const { sendRoleAccessEmail } = await import("./email");
     await sendRoleAccessEmail("super_admin", "sa@example.gr", "https://teamchamp.vercel.app/access/abc");

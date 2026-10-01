@@ -29,25 +29,21 @@ export default async function ClubsPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        {(clubs ?? []).map((c) => (
-          <div
-            key={c.id}
-            className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex items-center justify-between"
-          >
-            <div>
-              <div className="font-semibold">{c.name}</div>
-              <div className="text-xs text-muted mt-0.5">
-                {c.type === "club" ? "Σύλλογος" : "Σχολείο"}
-                {c.eso_code ? ` · Κωδικός ΕΣΟ ${c.eso_code}` : ""}
-                {c.contact_email ? ` · ${c.contact_email}` : ""}
-                {c.contact_phone ? ` · ${c.contact_phone}` : ""}
-              </div>
-            </div>
+      <div className="bg-card border border-cardBorder rounded-xl divide-y divide-cardBorder">
+        {(clubs ?? []).map((c, i) => (
+          <div key={c.id} className="px-4 py-2 flex items-center gap-3">
+            <span className="w-5 text-xs text-muted text-right flex-shrink-0">{i + 1}</span>
+            <span className="text-sm font-semibold truncate">{c.name}</span>
+            <span className="text-xs text-muted truncate">
+              {c.type === "club" ? "Σύλλογος" : "Σχολείο"}
+              {c.eso_code ? ` · ΕΣΟ ${c.eso_code}` : ""}
+              {c.contact_email ? ` · ${c.contact_email}` : ""}
+              {c.contact_phone ? ` · ${c.contact_phone}` : ""}
+            </span>
           </div>
         ))}
         {(clubs ?? []).length === 0 && (
-          <p className="text-sm text-muted">Κανένας σύλλογος/σχολείο ακόμα.</p>
+          <p className="text-sm text-muted px-4 py-3">Κανένας σύλλογος/σχολείο ακόμα.</p>
         )}
       </div>
 

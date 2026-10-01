@@ -237,11 +237,11 @@ describe("όριο αθλητών και σειρά", () => {
     expect(rosterOf("team1").map((x: any) => x.declared_order).sort()).toEqual([1, 3, 4]);
   });
 
-  it("κλειδωμένη βασική σύνθεση δεν δέχεται προσθήκες", async () => {
+  it("το παλιό πεδίο roster_locked ΔΕΝ εμποδίζει πια προσθήκες — μόνο η προθεσμία εγγραφών κλειδώνει (επιβεβαιωμένο)", async () => {
     h.db = seed({ lockedTeam2: true });
     const r = await addDirectoryPlayerToRoster("tok2", undefined, "PLR-00017", "M");
-    expect(r).toEqual({ ok: false, message: "Η βασική σύνθεση είναι ήδη κλειδωμένη." });
-    expect(rosterOf("team2")).toHaveLength(0);
+    expect(r).toEqual({ ok: true });
+    expect(rosterOf("team2")).toHaveLength(1);
   });
 });
 

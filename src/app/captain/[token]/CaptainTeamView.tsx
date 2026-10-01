@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   addPlayerToRoster,
   removeRosterEntry,
-  moveRosterEntry,
+  moveRosterEntryUp,
+  moveRosterEntryDown,
   saveCaptainInfo,
   submitRoundComposition,
   searchDirectory,
@@ -95,14 +96,12 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const initialAssignments =
     roundRules && roundRoster ? computeDefaultAssignment(roundRules, roundRoster.roster, roundRoster.players) : [];
 
-  // Ίδια λογική με το assertRosterEditable στον server (actions.ts) — επιβεβαιωμένο bug fix:
-  // πριν κοιτούσε ΜΟΝΟ το παλιό team.roster_lock_deadline (άδειο πλέον για αυτο-εγγεγραμμένες
-  // ομάδες), ΠΟΤΕ την πραγματική προθεσμία εγγραφών της διοργάνωσης.
+  // Το ΜΟΝΟ κριτήριο κλειδώματος είναι η προθεσμία εγγραφών της διοργάνωσης
+  // (επιβεβαιωμένο) — ίδια λογική με το assertRosterEditable στον server. Καμία
+  // επιρροή από χειροκίνητο κλείδωμα admin ή παλιό ανά-ομάδα πεδίο πλέον.
   const registrationDeadline = competitionFee?.registration_deadline ?? null;
   const registrationDeadlinePassed = !!registrationDeadline && new Date(registrationDeadline) < new Date();
-  const teamDeadlinePassed =
-    !!team.roster_lock_deadline && new Date(team.roster_lock_deadline) < new Date();
-  const editable = !team.roster_locked && !registrationDeadlinePassed && !teamDeadlinePassed;
+  const editable = !registrationDeadlinePassed;
 
   const boundAddPlayer = addPlayerToRoster.bind(null, params.token, teamId);
   const boundRemove = removeRosterEntry.bind(null, params.token, teamId);
@@ -150,11 +149,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
       </div>
 
       {!editable && (
-        <p className="text-sm text-good">
-          {team.roster_locked
-            ? "Η βασική σύνθεση είναι κλειδωμένη."
-            : "Η προθεσμία έχει λήξει — η σύνθεση δεν αλλάζει πια."}
-        </p>
+        <p className="text-sm text-good">Η προθεσμία έχει λήξει — η σύνθεση δεν αλλάζει πια.</p>
       )}
 
       <div>
@@ -190,9 +185,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     </>
   );
 
-  const lockedReason = team.roster_locked
-    ? "Η βασική σύνθεση έχει κλειδωθεί από τη διοργάνωση."
-    : "Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.";
+  const lockedReason = "Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.";
 
   const athletesTabContent = (
     <>
@@ -211,8 +204,8 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
         rosterSize={rules?.roster_size ?? null}
         editableByDeadline={editable}
         lockedReason={lockedReason}
-        moveUp={async (entryId: string) => { "use server"; await moveRosterEntry(params.token, teamId, entryId, "up"); }}
-        moveDown={async (entryId: string) => { "use server"; await moveRosterEntry(params.token, teamId, entryId, "down"); }}
+        moveUp={moveRosterEntryUp.bind(null, params.token, teamId)}
+        moveDown={moveRosterEntryDown.bind(null, params.token, teamId)}
         remove={boundRemove}
         addManual={boundAddPlayer}
         search={searchDirectory.bind(null, params.token, teamId)}

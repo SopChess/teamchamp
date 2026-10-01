@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { callSafely } from "@/lib/actions/safeAction";
 
 interface Props {
@@ -37,6 +37,16 @@ export default function SavableForm({ action, children, className, successMessag
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Το "✓ Αποθηκεύτηκε" εξαφανίζεται μόνο του μετά από λίγο (επιβεβαιωμένο) —
+  // χωρίς αυτό, πολλές μικρές φόρμες δίπλα-δίπλα (π.χ. τα κουμπιά ↑/↓/✕ μιας
+  // λίστας) στοίβαζαν μόνιμα μηνύματα, δημιουργώντας οπτικό χάος. Τα μηνύματα
+  // ΣΦΑΛΜΑΤΟΣ ΔΕΝ εξαφανίζονται μόνα τους — ο χρήστης χρειάζεται να τα διαβάσει.
+  useEffect(() => {
+    if (status !== "success") return;
+    const t = setTimeout(() => setStatus("idle"), 2500);
+    return () => clearTimeout(t);
+  }, [status, message]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

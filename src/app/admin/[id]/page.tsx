@@ -17,7 +17,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, registration_deadline, entry_fee_amount, entry_fee_note, status, requires_certificate")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, registration_deadline, entry_fee_amount, entry_fee_note, status, requires_certificate")
     .eq("id", params.id)
     .single();
 
@@ -131,6 +131,17 @@ export default async function CompetitionPage({ params }: { params: { id: string
           placeholder="https://maps.app.goo.gl/..."
           className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Link αποτελεσμάτων (chess-results.com)
+        <input
+          name="chess_results_url"
+          type="url"
+          defaultValue={competition?.chess_results_url ?? ""}
+          placeholder="https://chess-results.com/tnr..."
+          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+        <span className="text-xs text-muted">Προαιρετικό — εμφανίζεται στη δημόσια σελίδα του τουρνουά, αν δοθεί.</span>
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Προθεσμία εγγραφών

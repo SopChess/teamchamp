@@ -94,16 +94,16 @@ async function getTeamByToken(token: string, teamId: string | undefined): Promis
   throw new Error("Άκυρο ή ληγμένο link.");
 }
 
+/**
+ * Το ΜΟΝΟ κριτήριο κλειδώματος της βασικής σύνθεσης είναι η προθεσμία εγγραφών
+ * της διοργάνωσης (επιβεβαιωμένο) — όχι χειροκίνητο κλείδωμα από τον admin, όχι
+ * παλιό ανά-ομάδα πεδίο. Έως τη λήξη της, ο υπεύθυνος μπορεί να κάνει όσες
+ * αλλαγές θέλει.
+ */
 function assertRosterEditable(team: TeamRow) {
-  if (team.roster_locked) {
-    throw new Error("Η βασική σύνθεση είναι ήδη κλειδωμένη.");
-  }
   const deadline = registrationDeadlineOf(team);
   if (deadline && new Date(deadline) < new Date()) {
     throw new Error("Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.");
-  }
-  if (team.roster_lock_deadline && new Date(team.roster_lock_deadline) < new Date()) {
-    throw new Error("Η προθεσμία κατάθεσης βασικής σύνθεσης έχει λήξει.");
   }
 }
 
@@ -300,6 +300,21 @@ export async function removeRosterEntry(token: string, teamId: string | undefine
   revalidateCaptainPaths(token, teamId);
 }
 
+/**
+ * Λεπτά "wrappers" σε ρητή, top-level server action (όχι inline closure μέσα σε
+ * JSX prop) — επιβεβαιωμένη διόρθωση bug: το inline "use server" closure
+ * δούλευε όταν καλούνταν απευθείας σε tests, αλλά όχι αξιόπιστα μέσα από
+ * πραγματικό browser/production (αποτυχία χωρίς κανένα μήνυμα). Το .bind() σε
+ * μια κανονική εξαγόμενη συνάρτηση είναι το ίδιο, αποδεδειγμένο μοτίβο που ήδη
+ * δουλεύει παντού αλλού (π.χ. removeRosterEntry).
+ */
+export async function moveRosterEntryUp(token: string, teamId: string | undefined, entryId: string) {
+  return moveRosterEntry(token, teamId, entryId, "up");
+}
+export async function moveRosterEntryDown(token: string, teamId: string | undefined, entryId: string) {
+  return moveRosterEntry(token, teamId, entryId, "down");
+}
+
 export async function moveRosterEntry(token: string, teamId: string | undefined, entryId: string, direction: "up" | "down") {
   const supabase = createClient();
   const team = await getTeamByToken(token, teamId);
@@ -363,32 +378,6 @@ export async function saveCaptainInfo(token: string, teamId: string | undefined,
       phone,
     });
     if (error) throw new Error(`Αποτυχία αποθήκευσης αρχηγού: ${error.message}`);
-  }
-
-  revalidateCaptainPaths(token, teamId);
-}
-
-export async function confirmRoster(token: string, teamId: string | undefined) {
-  const supabase = createClient();
-  const team = await getTeamByToken(token, teamId);
-  assertRosterEditable(team);
-
-  const { count } = await supabase
-    .from("roster_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("team_id", team.id);
-
-  if (!count) {
-    throw new Error("Προσθέστε τουλάχιστον έναν αθλητή πριν την επιβεβαίωση.");
-  }
-
-  const { error } = await supabase
-    .from("teams")
-    .update({ status: "confirmed", roster_locked: true })
-    .eq("id", team.id);
-
-  if (error) {
-    throw new Error(`Αποτυχία επιβεβαίωσης: ${error.message}`);
   }
 
   revalidateCaptainPaths(token, teamId);

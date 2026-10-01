@@ -17,16 +17,19 @@ import {
  */
 export default function RosterRulesBuilder({ initial }: { initial: BoardRule[] }) {
   const [rules, setRules] = useState<BoardRule[]>(initial.length > 0 ? initial : [emptyBoardRule(1)]);
-  const errors = validateBoardRules(rules);
-  const json = JSON.stringify(rules);
+  // Ο αριθμός σκακιέρας δεν είναι πλέον επεξεργάσιμο πεδίο (επιβεβαιωμένο) — είναι πάντα η
+  // θέση στη λίστα (1η γραμμή = Σκακιέρα 1, 2η = Σκακιέρα 2 κ.ο.κ.), ώστε να μην μπορεί ποτέ
+  // να αποκλίνει. Κανονικοποιούμε εδώ ώστε ΚΑΙ η αποθήκευση να ακολουθεί πάντα τη θέση,
+  // ανεξάρτητα από τι είχε αποθηκευτεί παλιότερα.
+  const numberedRules = rules.map((r, i) => ({ ...r, board: i + 1 }));
+  const errors = validateBoardRules(numberedRules);
+  const json = JSON.stringify(numberedRules);
 
   const update = (i: number, patch: Partial<BoardRule>) =>
     setRules((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
-  const addBoard = () => {
-    const nextNumber = rules.length > 0 ? Math.max(...rules.map((r) => r.board)) + 1 : 1;
-    setRules((prev) => [...prev, emptyBoardRule(nextNumber)]);
-  };
+  // Ο αριθμός που περνάμε εδώ δεν έχει πια σημασία — πάντα αντικαθίσταται από τη θέση στο numberedRules.
+  const addBoard = () => setRules((prev) => [...prev, emptyBoardRule(prev.length + 1)]);
   const removeBoard = (i: number) => setRules((prev) => prev.filter((_, idx) => idx !== i));
 
   const addConstraint = (i: number) =>
@@ -45,20 +48,10 @@ export default function RosterRulesBuilder({ initial }: { initial: BoardRule[] }
       <input type="hidden" name="board_rules_json" value={json} />
       <div className="text-xs uppercase tracking-wide text-muted">Κανόνες ανά σκακιέρα</div>
 
-      {rules.map((rule, i) => (
+      {numberedRules.map((rule, i) => (
         <div key={i} className="bg-panel border border-cardBorder rounded-lg p-3 flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1 text-xs">
-              Σκακιέρα
-              <input
-                type="number"
-                min={1}
-                value={rule.board}
-                onChange={(e) => update(i, { board: Number(e.target.value) })}
-                className={`${inputCls} w-16`}
-                aria-label={`Αριθμός σκακιέρας για τη γραμμή ${i + 1}`}
-              />
-            </label>
+            <span className="text-sm font-serif font-bold text-gold">Σκακιέρα {rule.board}</span>
             <label className="flex items-center gap-1.5 text-xs">
               <input
                 type="checkbox"

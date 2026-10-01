@@ -26,6 +26,7 @@ export async function createCompetition(formData: FormData) {
   const maxTeamsPerClub = Math.max(1, Number(formData.get("max_teams_per_club") ?? 1) || 1);
   const announcementUrl = String(formData.get("announcement_url") ?? "").trim() || null;
   const venueMapsUrl = String(formData.get("venue_maps_url") ?? "").trim() || null;
+  const chessResultsUrl = String(formData.get("chess_results_url") ?? "").trim() || null;
   const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
   const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
@@ -52,6 +53,7 @@ export async function createCompetition(formData: FormData) {
       max_teams_per_club: maxTeamsPerClub,
       announcement_url: announcementUrl,
       venue_maps_url: venueMapsUrl,
+      chess_results_url: chessResultsUrl,
       registration_deadline: registrationDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
@@ -84,6 +86,7 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const maxTeamsPerClub = Math.max(1, Number(formData.get("max_teams_per_club") ?? 1) || 1);
   const announcementUrl = String(formData.get("announcement_url") ?? "").trim() || null;
   const venueMapsUrl = String(formData.get("venue_maps_url") ?? "").trim() || null;
+  const chessResultsUrl = String(formData.get("chess_results_url") ?? "").trim() || null;
   const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
   const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
@@ -108,6 +111,7 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       max_teams_per_club: maxTeamsPerClub,
       announcement_url: announcementUrl,
       venue_maps_url: venueMapsUrl,
+      chess_results_url: chessResultsUrl,
       registration_deadline: registrationDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,

@@ -28,7 +28,7 @@ export default async function ChampionshipsPage() {
   const supabase = createClient();
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, name, starts_on, ends_on, venue, announcement_url, venue_maps_url, registration_deadline, status")
+    .select("id, name, starts_on, ends_on, venue, announcement_url, venue_maps_url, chess_results_url, registration_deadline, status")
     .order("starts_on", { ascending: false, nullsFirst: false });
 
   return (
@@ -111,6 +111,11 @@ export default async function ChampionshipsPage() {
                 <Link href={`/championships/${c.id}`} className="text-xs text-gold underline">
                   Κατάταξη &amp; Αποτελέσματα →
                 </Link>
+                {c.chess_results_url && (
+                  <a href={c.chess_results_url} target="_blank" rel="noreferrer" className="text-xs text-gold underline">
+                    chess-results.com →
+                  </a>
+                )}
               </div>
               {status === "open" && (
                 <Link

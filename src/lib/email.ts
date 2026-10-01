@@ -139,6 +139,26 @@ export async function sendStaffAccessEmail(email: string, link: string): Promise
   return sendEmail(email, "Το προσωπικό σας link πρόσβασης — Team ALMA", html, text);
 }
 
+/**
+ * Ενημέρωση προς τον υπεύθυνο ότι η διοργάνωση άλλαξε κάτι στα στοιχεία της
+ * ομάδας του (επιβεβαιωμένο) — π.χ. διόρθωση επωνυμίας συλλόγου. Best-effort,
+ * δεν μπλοκάρει ποτέ την ίδια την αποθήκευση αν αποτύχει.
+ */
+export async function sendTeamUpdatedEmail(email: string, newClubName: string): Promise<boolean> {
+  const html = emailWrapper(`
+    <p>Η διοργάνωση ενημέρωσε τα στοιχεία της ομάδας σας στο <b>${FROM_NAME}</b>.</p>
+    <p>Νέα επωνυμία συλλόγου/σχολείου: <b>${newClubName}</b></p>
+    <p style="font-size:0.9em;color:#666">
+      Αν έχετε ερωτήσεις, επικοινωνήστε με τη διοργάνωση.
+    </p>
+  `);
+  const text =
+    `Η διοργάνωση ενημέρωσε τα στοιχεία της ομάδας σας στο Team ALMA.\n\n` +
+    `Νέα επωνυμία συλλόγου/σχολείου: ${newClubName}\n\n` +
+    `Αν έχετε ερωτήσεις, επικοινωνήστε με τη διοργάνωση.`;
+  return sendEmail(email, "Ενημέρωση για την ομάδα σας — Team ALMA", html, text);
+}
+
 export type StaffRole = "super_admin" | "tournament_admin" | "referee";
 
 const ROLE_INTRO: Record<StaffRole, string> = {

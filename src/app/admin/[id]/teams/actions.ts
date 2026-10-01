@@ -10,6 +10,7 @@ import { findDirectoryRowById } from "@/lib/players/server";
 import { toPlayerFields, isGender, type Gender } from "@/lib/players/directory";
 import { cleanName } from "@/lib/transliterate";
 import { addAthleteToTeam, type AddAthleteResult } from "@/app/captain/[token]/actions";
+import { sendTeamUpdatedEmail } from "@/lib/email";
 
 const CERTIFICATE_BUCKET = "attendance-certificates";
 
@@ -19,6 +20,35 @@ const CERTIFICATE_BUCKET = "attendance-certificates";
  * υπεύθυνο ομάδας, μέσω της δημόσιας φόρμας εγγραφής (επιβεβαιωμένο) — εδώ
  * μόνο διόρθωση στοιχείων μιας ήδη δηλωμένης ομάδας.
  */
+/**
+ * Διόρθωση της επωνυμίας συλλόγου/σχολείου απευθείας στο κείμενο (επιβεβαιωμένο:
+ * αντικαθιστά το παλιό dropdown επιλογής άλλου συλλόγου — σπάνια, μικρή
+ * διόρθωση λάθους πληκτρολόγησης, όχι «μετακόμιση» σε άλλη εγγραφή). Στέλνει
+ * επίσης ειδοποίηση στον υπεύθυνο (best-effort — δεν μπλοκάρει την αποθήκευση).
+ */
+export async function updateTeamClubName(competitionId: string, teamId: string, formData: FormData) {
+  const supabase = createClient();
+  const name = String(formData.get("club_name") ?? "").trim();
+  if (!name) throw new Error("Η επωνυμία δεν μπορεί να είναι κενή.");
+
+  const { data: team } = await supabase.from("teams").select("club_or_school_id").eq("id", teamId).maybeSingle();
+  if (!team) throw new Error("Η ομάδα δεν βρέθηκε.");
+
+  const { error } = await supabase.from("clubs_schools").update({ name }).eq("id", team.club_or_school_id);
+  if (error) throw new Error(`Αποτυχία αποθήκευσης: ${error.message}`);
+
+  const { data: captain } = await supabase.from("captains").select("email").eq("team_id", teamId).maybeSingle();
+  if (captain?.email) {
+    try {
+      await sendTeamUpdatedEmail(captain.email, name);
+    } catch (e) {
+      console.error("Αποστολή ειδοποίησης αρχηγού απέτυχε:", e);
+    }
+  }
+
+  revalidatePath(`/admin/${competitionId}/teams`);
+}
+
 export async function updateTeam(competitionId: string, teamId: string, formData: FormData) {
   const supabase = createClient();
 

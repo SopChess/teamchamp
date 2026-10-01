@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SavableForm from "./SavableForm";
@@ -177,5 +177,30 @@ describe("SavableForm — redirect του Next.js", () => {
     render(<Form action={action} />);
     await expectRethrown("NEXT_NOT_FOUND", async () => { await user.click(screen.getByText("Αποθήκευση")); });
     expect(screen.queryByText(/✗/)).not.toBeInTheDocument();
+  });
+});
+
+describe("SavableForm — το μήνυμα επιτυχίας εξαφανίζεται μόνο του (επιβεβαιωμένο)", () => {
+  beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+  afterEach(() => vi.useRealTimers());
+
+  it("το «✓ Αποθηκεύτηκε» χάνεται μόνο του μετά από λίγο", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const action = vi.fn(async () => undefined);
+    render(<Form action={action} />);
+    await user.click(screen.getByText("Αποθήκευση"));
+    await vi.waitFor(() => expect(screen.getByText(/Αποθηκεύτηκε/)).toBeInTheDocument());
+    vi.advanceTimersByTime(3000);
+    await vi.waitFor(() => expect(screen.queryByText(/Αποθηκεύτηκε/)).not.toBeInTheDocument());
+  });
+
+  it("ΔΕΝ εξαφανίζεται μόνο του το μήνυμα ΣΦΑΛΜΑΤΟΣ — ο χρήστης πρέπει να το διαβάσει", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const action = vi.fn(async () => { throw new Error("Κάτι πήγε στραβά."); });
+    render(<Form action={action} />);
+    await user.click(screen.getByText("Αποθήκευση"));
+    await vi.waitFor(() => expect(screen.getByText(/Κάτι πήγε στραβά/)).toBeInTheDocument());
+    vi.advanceTimersByTime(5000);
+    expect(screen.getByText(/Κάτι πήγε στραβά/)).toBeInTheDocument();
   });
 });
