@@ -111,6 +111,16 @@ export default function RosterRulesBuilder({ initial }: { initial: BoardRule[] }
                     aria-label="Ημερομηνία γέννησης"
                   />
                 )}
+                {(c.type === "birth_year_from" || c.type === "birth_year_until") && (
+                  <input
+                    type="number"
+                    value={String(c.value)}
+                    onChange={(e) => updateConstraint(i, ci, { value: e.target.value })}
+                    placeholder="π.χ. 2014"
+                    className={inputCls}
+                    aria-label="Έτος γέννησης"
+                  />
+                )}
                 {(c.type === "rating_min" || c.type === "rating_max") && (
                   <input
                     type="number"

@@ -2,13 +2,21 @@ export type ConstraintType =
   | "gender"
   | "birth_after"
   | "birth_before"
+  | "birth_year_from"
+  | "birth_year_until"
   | "rating_min"
   | "rating_max"
   | "alternates_allowed";
 
 export interface BoardConstraint {
   type: ConstraintType;
-  /** "M" | "F" | "any" for gender, ISO date for birth_*, number for rating_*, string[] of player ids for alternates_allowed */
+  /**
+   * "M" | "F" | "any" for gender, ISO date for birth_after/birth_before,
+   * calendar YEAR (number, e.g. 2014) for birth_year_from/birth_year_until —
+   * "από το έτος Χ" means from 1/1/X onward, "έως το έτος Χ" means through
+   * 31/12/X (whole calendar year, επιβεβαιωμένο) — number for rating_*,
+   * string[] of player ids for alternates_allowed
+   */
   value: string | number | string[];
 }
 

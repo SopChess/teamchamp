@@ -16,11 +16,14 @@ import {
 import { ENTRY_FEE_STATUS_LABEL, isEntryFeeStatus } from "@/lib/attendance/attendance";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
+import { boardCoverageStatus } from "@/lib/rosterRules/basicRosterCheck";
 import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
 import CompositionForm from "./CompositionForm";
 import PlayerSearch from "./PlayerSearch";
 import Countdown from "./Countdown";
 import SavableForm from "@/components/SavableForm";
+import TabsShell, { type CaptainTab } from "./TabsShell";
+import BoardCoverageCards from "./BoardCoverageCards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,6 +42,10 @@ const STATUS_LABELS: Record<string, string> = {
  * (όταν ο υπεύθυνος έχει περισσότερες από μία και έχει ήδη διαλέξει). Και οι
  * δύο σελίδες έχουν ήδη επαληθεύσει ότι το token δίνει πρόσβαση σε αυτό το
  * teamId πριν φτάσουν εδώ.
+ *
+ * Πέντε καρτέλες, ΙΔΙΑ σελίδα/URL (επιβεβαιωμένο): Ομάδα, Αθλητές, Σύνθεση
+ * Γύρου, Αντίπαλος, Πληρωμή/Βεβαίωση. Όλα τα δεδομένα φορτώνονται μαζί εδώ,
+ * όπως πριν — το TabsShell απλά αποφασίζει τι φαίνεται.
  */
 export default async function CaptainTeamView({ token, teamId }: { token: string; teamId: string }) {
   const params = { token };
@@ -58,13 +65,13 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
 
   const { data: rules } = await supabase
     .from("roster_rules")
-    .select("roster_size")
+    .select("assignment_mode, roster_size, match_board_count, board_rules, reserve_count, one_player_per_category")
     .eq("competition_id", team.competition_id)
-    .maybeSingle<Pick<RosterRules, "roster_size">>();
+    .maybeSingle<RosterRules>();
 
   const { data: entries } = await supabase
     .from("roster_entries")
-    .select("id, declared_order, players(id, first_name, last_name, rating_national, rating_fide, gender)")
+    .select("id, declared_order, players(id, first_name, last_name, birth_date, rating_national, rating_fide, gender)")
     .eq("team_id", team.id)
     .order("declared_order", { ascending: true });
 
@@ -96,92 +103,31 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const boundCaptainInfo = saveCaptainInfo.bind(null, params.token, teamId);
   const boundConfirm = confirmRoster.bind(null, params.token, teamId);
 
-  return (
-    <div className="min-h-screen px-6 py-10 max-w-sm mx-auto flex flex-col gap-8">
-      <div>
-        <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
-        <div className="text-xs text-muted mb-1">Κατάθεση Βασικής Σύνθεσης</div>
-        <h1 className="font-serif font-bold text-xl">
-          {/* @ts-expect-error — Supabase join typing simplified */}
-          {team.clubs_schools?.name ?? "Ομάδα"}
-        </h1>
-      </div>
+  // --- Ζωντανές κάρτες κάλυψης σκακιερών (Σχέδιο Α: καθοδηγεί, δεν μπλοκάρει) ---
+  type EntryPlayer = { id: string; first_name: string; last_name: string; birth_date: string | null; rating_national?: number; rating_fide?: number; gender?: string };
+  const playerOf = (entry: { players: unknown }) => {
+    const raw = entry.players;
+    return (Array.isArray(raw) ? raw[0] : raw) as EntryPlayer | undefined;
+  };
+  const rosterPlayers: Record<string, EntryPlayer> = {};
+  for (const entry of entries ?? []) {
+    const p = playerOf(entry as unknown as { players: unknown });
+    if (p) rosterPlayers[p.id] = p;
+  }
+  const boardCoverage =
+    rules && entries
+      ? boardCoverageStatus(
+          rules,
+          entries.map((e) => ({ player_id: playerOf(e as unknown as { players: unknown })?.id ?? "", declared_order: e.declared_order })),
+          rosterPlayers as unknown as Record<string, import("@/lib/rosterRules/types").Player>
+        )
+      : [];
+  const uncoveredCount = boardCoverage.filter((b) => !b.covered && b.label).length;
 
+  // === Περιεχόμενο ανά καρτέλα ===
 
-      {round.kind === "bye" && (
-        <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 text-sm">
-          <div className="font-semibold">Γύρος {round.roundNumber}</div>
-          <p className="text-muted mt-1">Η ομάδα σας έχει ελεύθερο γύρο (bye). Δεν απαιτείται σύνθεση.</p>
-        </div>
-      )}
-
-      {round.kind === "play" && (
-        <section className="flex flex-col gap-5">
-          <div className="bg-card border border-cardBorder rounded-xl px-4 py-4">
-            <div className="text-xs uppercase tracking-wide text-muted">
-              Γύρος {round.roundNumber} · Προετοιμασία Σύνθεσης
-            </div>
-            {round.window.open && round.window.endsAt && !round.composition ? (
-              <div className="mt-2">
-                <Countdown endsAt={round.window.endsAt} />
-                <div className="text-xs text-muted mt-1">λεπτά που απομένουν για την υποβολή</div>
-              </div>
-            ) : (
-              <div className="text-sm mt-2 text-muted">
-                {round.composition ? "Η σύνθεση του γύρου έχει οριστικοποιηθεί." : "Το χρονικό παράθυρο υποβολής έχει λήξει."}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-xl px-4 py-3 border" style={{ background: "#1B1826", borderColor: "#3A2E52" }}>
-            <div className="text-xs uppercase tracking-wide text-muted mb-1">Αντίπαλος · Βασική Σύνθεση</div>
-            <div className="font-bold mb-2" style={{ color: "#C9A8E8" }}>{round.opponentName}</div>
-            <div className="flex flex-col gap-1">
-              {round.opponentRoster.map((o) => (
-                <div key={o.order} className="flex items-center gap-2 text-sm">
-                  <span className="w-5 text-xs font-bold text-muted2">{o.order}</span>
-                  <span className="flex-1 truncate" style={{ color: "#C7CEDD" }}>{o.name}</span>
-                  <span className="text-xs text-muted2">{o.rating ?? ""}</span>
-                </div>
-              ))}
-              {round.opponentRoster.length === 0 && (
-                <span className="text-xs text-muted">Δεν έχει δηλωθεί ακόμα βασική σύνθεση.</span>
-              )}
-            </div>
-          </div>
-
-          {round.composition && (
-            <div className="bg-card border border-cardBorder rounded-xl px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-muted mb-2">Η σύνθεσή σας για τον γύρο</div>
-              {round.composition.assignments.map((a) => (
-                <div key={a.board} className="flex justify-between py-1.5 text-sm border-b border-cardBorder last:border-b-0">
-                  <span className="text-muted">Σκακιέρα {a.board}</span>
-                  <span className="font-semibold">{a.playerName}</span>
-                </div>
-              ))}
-              {round.composition.status === "used_default" && (
-                <p className="text-xs text-muted mt-2">
-                  Δεν υποβλήθηκε σύνθεση εγκαίρως, οπότε εφαρμόστηκε η βασική σύνθεση όπως δηλώθηκε.
-                </p>
-              )}
-            </div>
-          )}
-
-          {!round.composition && round.window.open && roundRules && roundRoster && (
-            <CompositionForm
-              rules={roundRules}
-              roster={roundRoster.roster}
-              players={roundRoster.players}
-              initial={initialAssignments}
-              submit={submitRoundComposition.bind(null, params.token, teamId, round.roundId)}
-            />
-          )}
-          {!round.composition && round.window.open && !roundRules && (
-            <p className="text-sm text-muted">Δεν έχουν οριστεί ακόμα κανόνες σύνθεσης για τη διοργάνωση.</p>
-          )}
-        </section>
-      )}
-
+  const teamTabContent = (
+    <>
       <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex items-center justify-between">
         <div>
           {team.roster_lock_deadline && (
@@ -207,15 +153,54 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
       )}
 
       <div>
+        <div className="text-xs uppercase tracking-wide text-muted mb-2">Αρχηγός Ομάδας</div>
+        <SavableForm action={boundCaptainInfo} successMessage="Τα στοιχεία του αρχηγού αποθηκεύτηκαν." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+          <div className="flex gap-2">
+            <input
+              name="first_name"
+              required
+              defaultValue={captain?.first_name ?? ""}
+              placeholder="Όνομα (λατινικά)"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+            <input
+              name="last_name"
+              required
+              defaultValue={captain?.last_name ?? ""}
+              placeholder="Επώνυμο (λατινικά)"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+          </div>
+          <input
+            name="phone"
+            defaultValue={captain?.phone ?? ""}
+            placeholder="Τηλέφωνο"
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+          />
+          <button type="submit" className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
+            Αποθήκευση Στοιχείων Αρχηγού
+          </button>
+        </SavableForm>
+      </div>
+    </>
+  );
+
+  const athletesTabContent = (
+    <>
+      {boardCoverage.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted mb-2">Κάλυψη Σκακιερών</div>
+          <BoardCoverageCards boards={boardCoverage} />
+        </div>
+      )}
+
+      <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">
           Βασική Σύνθεση{rules?.roster_size ? ` · έως ${rules.roster_size}` : ""}
         </div>
         <div className="flex flex-col gap-2">
           {(entries ?? []).map((entry, i) => {
-            const rawPlayer = (entry as unknown as { players: unknown }).players;
-            const player = (Array.isArray(rawPlayer) ? rawPlayer[0] : rawPlayer) as
-              | { first_name: string; last_name: string; rating_national?: number; rating_fide?: number; gender?: string }
-              | undefined;
+            const player = playerOf(entry as unknown as { players: unknown });
             return (
               <div
                 key={entry.id}
@@ -313,37 +298,105 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
         </SavableForm>
       )}
 
-      <div>
-        <div className="text-xs uppercase tracking-wide text-muted mb-2">Αρχηγός Ομάδας</div>
-        <SavableForm action={boundCaptainInfo} successMessage="Τα στοιχεία του αρχηγού αποθηκεύτηκαν." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
-          <div className="flex gap-2">
-            <input
-              name="first_name"
-              required
-              defaultValue={captain?.first_name ?? ""}
-              placeholder="Όνομα (λατινικά)"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-            />
-            <input
-              name="last_name"
-              required
-              defaultValue={captain?.last_name ?? ""}
-              placeholder="Επώνυμο (λατινικά)"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-            />
-          </div>
-          <input
-            name="phone"
-            defaultValue={captain?.phone ?? ""}
-            placeholder="Τηλέφωνο"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-          />
-          <button type="submit" className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
-            Αποθήκευση Στοιχείων Αρχηγού
+      {editable && (
+        <SavableForm action={boundConfirm} successMessage="Η σύνθεση υποβλήθηκε.">
+          <button type="submit" className="w-full bg-gold text-bg font-semibold rounded-xl py-3 text-sm">
+            Υποβολή Σύνθεσης
           </button>
         </SavableForm>
-      </div>
+      )}
+    </>
+  );
 
+  const roundTabContent = (
+    <>
+      {round.kind === "bye" && (
+        <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 text-sm">
+          <div className="font-semibold">Γύρος {round.roundNumber}</div>
+          <p className="text-muted mt-1">Η ομάδα σας έχει ελεύθερο γύρο (bye). Δεν απαιτείται σύνθεση.</p>
+        </div>
+      )}
+
+      {round.kind === "play" && (
+        <>
+          <div className="bg-card border border-cardBorder rounded-xl px-4 py-4">
+            <div className="text-xs uppercase tracking-wide text-muted">
+              Γύρος {round.roundNumber} · Προετοιμασία Σύνθεσης
+            </div>
+            {round.window.open && round.window.endsAt && !round.composition ? (
+              <div className="mt-2">
+                <Countdown endsAt={round.window.endsAt} />
+                <div className="text-xs text-muted mt-1">λεπτά που απομένουν για την υποβολή</div>
+              </div>
+            ) : (
+              <div className="text-sm mt-2 text-muted">
+                {round.composition ? "Η σύνθεση του γύρου έχει οριστικοποιηθεί." : "Το χρονικό παράθυρο υποβολής έχει λήξει."}
+              </div>
+            )}
+          </div>
+
+          {round.composition && (
+            <div className="bg-card border border-cardBorder rounded-xl px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-muted mb-2">Η σύνθεσή σας για τον γύρο</div>
+              {round.composition.assignments.map((a) => (
+                <div key={a.board} className="flex justify-between py-1.5 text-sm border-b border-cardBorder last:border-b-0">
+                  <span className="text-muted">Σκακιέρα {a.board}</span>
+                  <span className="font-semibold">{a.playerName}</span>
+                </div>
+              ))}
+              {round.composition.status === "used_default" && (
+                <p className="text-xs text-muted mt-2">
+                  Δεν υποβλήθηκε σύνθεση εγκαίρως, οπότε εφαρμόστηκε η βασική σύνθεση όπως δηλώθηκε.
+                </p>
+              )}
+            </div>
+          )}
+
+          {!round.composition && round.window.open && roundRules && roundRoster && (
+            <CompositionForm
+              rules={roundRules}
+              roster={roundRoster.roster}
+              players={roundRoster.players}
+              initial={initialAssignments}
+              submit={submitRoundComposition.bind(null, params.token, teamId, round.roundId)}
+            />
+          )}
+          {!round.composition && round.window.open && !roundRules && (
+            <p className="text-sm text-muted">Δεν έχουν οριστεί ακόμα κανόνες σύνθεσης για τη διοργάνωση.</p>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  const opponentTabContent = (
+    <>
+      {round.kind === "bye" && (
+        <p className="text-sm text-muted">Δεν υπάρχει αντίπαλος αυτόν τον γύρο (ελεύθερος γύρος).</p>
+      )}
+      {round.kind === "play" && (
+        <div className="rounded-xl px-4 py-3 border" style={{ background: "#1B1826", borderColor: "#3A2E52" }}>
+          <div className="text-xs uppercase tracking-wide text-muted mb-1">Αντίπαλος · Βασική Σύνθεση</div>
+          <div className="font-bold mb-2" style={{ color: "#C9A8E8" }}>{round.opponentName}</div>
+          <div className="flex flex-col gap-1">
+            {round.opponentRoster.map((o) => (
+              <div key={o.order} className="flex items-center gap-2 text-sm">
+                <span className="w-5 text-xs font-bold text-muted2">{o.order}</span>
+                <span className="flex-1 truncate" style={{ color: "#C7CEDD" }}>{o.name}</span>
+                <span className="text-xs text-muted2">{o.rating ?? ""}</span>
+              </div>
+            ))}
+            {round.opponentRoster.length === 0 && (
+              <span className="text-xs text-muted">Δεν έχει δηλωθεί ακόμα βασική σύνθεση.</span>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const paymentTabContent = (
+    <>
       <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Βεβαίωση Φοίτησης</div>
         <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
@@ -385,40 +438,55 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
       </div>
 
       {feeAmount != null && (
-      <div>
-        <div className="text-xs uppercase tracking-wide text-muted mb-2">Παράβολο Συμμετοχής</div>
-        <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
-          <p className="text-sm">
-            Ποσό: <span className="text-gold">{feeAmount}€{competitionFee?.entry_fee_note ? ` (${competitionFee.entry_fee_note})` : ""}</span>
-          </p>
-          <p className="text-sm">
-            Κατάσταση: <span className="text-gold">{ENTRY_FEE_STATUS_LABEL[feeStatus]}</span>
-          </p>
-          <SavableForm action={boundEntryFeeMethod} successMessage="Ο τρόπος πληρωμής αποθηκεύτηκε." className="flex gap-2">
-            <input
-              name="entry_fee_method"
-              defaultValue={team.entry_fee_method ?? ""}
-              placeholder="Τρόπος πληρωμής (π.χ. κατάθεση, μετρητά)"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-            />
-            <button type="submit" className="bg-panel border border-cardBorder rounded-lg px-4 py-2 text-sm whitespace-nowrap">
-              Αποθήκευση
-            </button>
-          </SavableForm>
-          <p className="text-xs text-muted">
-            Η κατάσταση ενημερώνεται από τη διοργάνωση αφού επιβεβαιωθεί η πληρωμή.
-          </p>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted mb-2">Παράβολο Συμμετοχής</div>
+          <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+            <p className="text-sm">
+              Ποσό: <span className="text-gold">{feeAmount}€{competitionFee?.entry_fee_note ? ` (${competitionFee.entry_fee_note})` : ""}</span>
+            </p>
+            <p className="text-sm">
+              Κατάσταση: <span className="text-gold">{ENTRY_FEE_STATUS_LABEL[feeStatus]}</span>
+            </p>
+            <SavableForm action={boundEntryFeeMethod} successMessage="Ο τρόπος πληρωμής αποθηκεύτηκε." className="flex gap-2">
+              <input
+                name="entry_fee_method"
+                defaultValue={team.entry_fee_method ?? ""}
+                placeholder="Τρόπος πληρωμής (π.χ. κατάθεση, μετρητά)"
+                className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+              />
+              <button type="submit" className="bg-panel border border-cardBorder rounded-lg px-4 py-2 text-sm whitespace-nowrap">
+                Αποθήκευση
+              </button>
+            </SavableForm>
+            <p className="text-xs text-muted">
+              Η κατάσταση ενημερώνεται από τη διοργάνωση αφού επιβεβαιωθεί η πληρωμή.
+            </p>
+          </div>
         </div>
-      </div>
       )}
+    </>
+  );
 
-      {editable && (
-        <SavableForm action={boundConfirm} successMessage="Η σύνθεση υποβλήθηκε.">
-          <button type="submit" className="w-full bg-gold text-bg font-semibold rounded-xl py-3 text-sm">
-            Υποβολή Σύνθεσης
-          </button>
-        </SavableForm>
-      )}
+  const tabs: CaptainTab[] = [
+    { id: "team", label: "Ομάδα", content: teamTabContent },
+    { id: "athletes", label: "Αθλητές", content: athletesTabContent, attention: uncoveredCount > 0 },
+    { id: "round", label: "Σύνθεση Γύρου", content: roundTabContent },
+    { id: "opponent", label: "Αντίπαλος", content: opponentTabContent },
+    { id: "payment", label: "Πληρωμή/Βεβαίωση", content: paymentTabContent },
+  ];
+
+  return (
+    <div className="min-h-screen px-6 py-10 max-w-sm mx-auto flex flex-col gap-6">
+      <div>
+        <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
+        <div className="text-xs text-muted mb-1">Portal Αρχηγού</div>
+        <h1 className="font-serif font-bold text-xl">
+          {/* @ts-expect-error — Supabase join typing simplified */}
+          {team.clubs_schools?.name ?? "Ομάδα"}
+        </h1>
+      </div>
+
+      <TabsShell tabs={tabs} />
     </div>
   );
 }

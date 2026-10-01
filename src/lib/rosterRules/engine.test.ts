@@ -3,8 +3,67 @@ import {
   validateComposition,
   computeDefaultAssignment,
   effectiveRating,
+  satisfiesBoardRule,
 } from "./engine";
-import type { Player, RosterEntry, RosterRules } from "./types";
+import type { Player, RosterEntry, RosterRules, BoardRule } from "./types";
+
+// ---------------------------------------------------------------------------
+// Νέος τύπος όρου: έτος γέννησης (επιβεβαιωμένο) — "από το έτος Χ" = από
+// 1/1/Χ και μετά, "έως το έτος Χ" = μέχρι και 31/12/Χ (ολόκληρο το έτος Χ
+// μετράει και στις δύο περιπτώσεις). Δίπλα στον υπάρχοντα τύπο με ακριβή
+// ημερομηνία, όχι αντικατάσταση.
+describe("birth_year_from / birth_year_until", () => {
+  const player = (birth_date: string | undefined): Player =>
+    ({ id: "p", first_name: "N", last_name: "L", birth_date } as Player);
+  const rule = (type: "birth_year_from" | "birth_year_until", value: number | string): BoardRule => ({
+    board: 1,
+    constraints: [{ type, value }],
+  });
+
+  it("«από το έτος 2014»: όλο το 2014 μετράει, το 2013 όχι", () => {
+    const r = rule("birth_year_from", 2014);
+    expect(satisfiesBoardRule(player("2014-01-01"), r)).toBe(true); // ακριβώς η 1η μέρα του έτους
+    expect(satisfiesBoardRule(player("2014-12-31"), r)).toBe(true); // η τελευταία μέρα του έτους
+    expect(satisfiesBoardRule(player("2015-06-15"), r)).toBe(true); // μεταγενέστερο έτος
+    expect(satisfiesBoardRule(player("2013-12-31"), r)).toBe(false); // μία μέρα πριν το όριο έτους
+  });
+
+  it("«έως το έτος 2014»: όλο το 2014 μετράει, το 2015 όχι", () => {
+    const r = rule("birth_year_until", 2014);
+    expect(satisfiesBoardRule(player("2014-01-01"), r)).toBe(true);
+    expect(satisfiesBoardRule(player("2014-12-31"), r)).toBe(true);
+    expect(satisfiesBoardRule(player("2013-01-01"), r)).toBe(true); // προγενέστερο έτος
+    expect(satisfiesBoardRule(player("2015-01-01"), r)).toBe(false); // μία μέρα μετά το όριο έτους
+  });
+
+  it("δουλεύει και όταν η τιμή είναι ΑΛΦΑΡΙΘΜΗΤΙΚΟ (όπως πράγματι αποθηκεύεται από τη φόρμα)", () => {
+    expect(satisfiesBoardRule(player("2014-06-01"), rule("birth_year_from", "2014"))).toBe(true);
+    expect(satisfiesBoardRule(player("2013-06-01"), rule("birth_year_from", "2014"))).toBe(false);
+  });
+
+  it("χωρίς ημερομηνία γέννησης, δεν ικανοποιείται ο όρος (ίδια συμπεριφορά με birth_after/birth_before)", () => {
+    expect(satisfiesBoardRule(player(undefined), rule("birth_year_from", 2014))).toBe(false);
+    expect(satisfiesBoardRule(player(undefined), rule("birth_year_until", 2014))).toBe(false);
+  });
+
+  it("συνδυασμός με φύλο (π.χ. «κορίτσι, γεννημένη από το 2014»)", () => {
+    const combo: BoardRule = { board: 4, constraints: [{ type: "gender", value: "F" }, { type: "birth_year_from", value: 2014 }] };
+    const girl2015 = { ...player("2015-01-01"), gender: "F" } as Player;
+    const boy2015 = { ...player("2015-01-01"), gender: "M" } as Player;
+    const girl2013 = { ...player("2013-01-01"), gender: "F" } as Player;
+    expect(satisfiesBoardRule(girl2015, combo)).toBe(true);
+    expect(satisfiesBoardRule(boy2015, combo)).toBe(false);
+    expect(satisfiesBoardRule(girl2013, combo)).toBe(false);
+  });
+
+  it("«από» και «έως» μαζί ορίζουν ένα ηλικιακό εύρος ετών", () => {
+    const range: BoardRule = { board: 1, constraints: [{ type: "birth_year_from", value: 2012 }, { type: "birth_year_until", value: 2014 }] };
+    expect(satisfiesBoardRule(player("2012-01-01"), range)).toBe(true);
+    expect(satisfiesBoardRule(player("2014-12-31"), range)).toBe(true);
+    expect(satisfiesBoardRule(player("2011-12-31"), range)).toBe(false);
+    expect(satisfiesBoardRule(player("2015-01-01"), range)).toBe(false);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Δείγμα #2 / #4 (Μαθητικό ΕΣΟ, 24ο Σχολικό Θεσ/νίκης-Χαλκιδικής):

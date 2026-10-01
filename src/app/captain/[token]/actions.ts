@@ -1,6 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+/** Ανανεώνει και τις δύο πιθανές διευθύνσεις της σελίδας — τη ρίζα (παλιά, μονή
+ * ομάδα) ΚΑΙ τη συγκεκριμένη ομάδα (νέα, πολλαπλές ομάδες ανά λογαριασμό) — χωρίς
+ * αυτό, ένας υπεύθυνος με πάνω από μία ομάδα θα έβλεπε παλιά δεδομένα στο
+ * /captain/[token]/[teamId] μέχρι χειροκίνητο refresh. */
+function revalidateCaptainPaths(token: string, teamId?: string) {
+  revalidatePath(`/captain/${token}`);
+  if (teamId) revalidatePath(`/captain/${token}/${teamId}`);
+}
 import { createClient } from "@/lib/supabase/server";
 import type { RosterRules, BoardAssignment } from "@/lib/rosterRules/types";
 import { validateComposition } from "@/lib/rosterRules/engine";
@@ -217,7 +226,7 @@ export async function addPlayerToRoster(token: string, teamId: string | undefine
   });
   if (!result.ok) throw new Error(result.message);
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 /**
@@ -266,7 +275,7 @@ export async function addDirectoryPlayerToRoster(
     if (!row) return { ok: false, message: "Ο αθλητής δεν βρέθηκε στον κατάλογο." };
 
     const result = await addAthleteToTeam(team, toPlayerFields(row, gender));
-    if (result.ok) revalidatePath(`/captain/${token}`);
+    if (result.ok) revalidateCaptainPaths(token, teamId);
     return result;
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Άγνωστο σφάλμα." };
@@ -288,7 +297,7 @@ export async function removeRosterEntry(token: string, teamId: string | undefine
     throw new Error(`Αποτυχία αφαίρεσης: ${error.message}`);
   }
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 export async function moveRosterEntry(token: string, teamId: string | undefined, entryId: string, direction: "up" | "down") {
@@ -319,7 +328,7 @@ export async function moveRosterEntry(token: string, teamId: string | undefined,
   await supabase.from("roster_entries").update({ declared_order: a.declared_order }).eq("id", b.id);
   await supabase.from("roster_entries").update({ declared_order: b.declared_order }).eq("id", a.id);
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 export async function saveCaptainInfo(token: string, teamId: string | undefined, formData: FormData) {
@@ -356,7 +365,7 @@ export async function saveCaptainInfo(token: string, teamId: string | undefined,
     if (error) throw new Error(`Αποτυχία αποθήκευσης αρχηγού: ${error.message}`);
   }
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 export async function confirmRoster(token: string, teamId: string | undefined) {
@@ -382,7 +391,7 @@ export async function confirmRoster(token: string, teamId: string | undefined) {
     throw new Error(`Αποτυχία επιβεβαίωσης: ${error.message}`);
   }
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 export type SubmitCompositionResult = { ok: true } | { ok: false; message: string };
@@ -511,7 +520,7 @@ export async function submitRoundComposition(
       return { ok: false, message: `Αποτυχία αποθήκευσης σκακιερών: ${assignError.message}` };
     }
 
-    revalidatePath(`/captain/${token}`);
+    revalidateCaptainPaths(token, teamId);
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Άγνωστο σφάλμα." };
@@ -566,7 +575,7 @@ export async function uploadAttendanceCertificate(token: string, teamId: string 
     await supabase.storage.from(CERTIFICATE_BUCKET).remove([previousPath]);
   }
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 /** Ο τρόπος πληρωμής που δηλώνει ο αρχηγός — η ίδια η κατάσταση (πληρώθηκε/απαλλαγή) την ορίζει μόνο ο διαχειριστής. */
@@ -578,7 +587,7 @@ export async function setEntryFeeMethod(token: string, teamId: string | undefine
   const { error } = await supabase.from("teams").update({ entry_fee_method: method || null }).eq("id", team.id);
   if (error) throw new Error(`Αποτυχία αποθήκευσης: ${error.message}`);
 
-  revalidatePath(`/captain/${token}`);
+  revalidateCaptainPaths(token, teamId);
 }
 
 /** Προσωρινό link λήψης της βεβαίωσης (λήγει σε 10 λεπτά) — δημιουργείται μόνο κατόπιν αιτήματος με έγκυρο token. */

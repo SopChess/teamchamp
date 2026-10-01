@@ -19,6 +19,11 @@ export function effectiveRating(player: Player): number {
   return 800;
 }
 
+/** Έτος γέννησης από ISO ημερομηνία (yyyy-mm-dd) — ανθεκτικό σε λανθασμένη μορφή. */
+function birthYearOf(isoDate: string): number {
+  return Number(isoDate.slice(0, 4));
+}
+
 function satisfiesConstraint(player: Player, constraint: BoardConstraint): boolean {
   switch (constraint.type) {
     case "gender": {
@@ -32,6 +37,17 @@ function satisfiesConstraint(player: Player, constraint: BoardConstraint): boole
     case "birth_before": {
       if (!player.birth_date) return false;
       return player.birth_date <= (constraint.value as string);
+    }
+    case "birth_year_from": {
+      // "Γεννημένοι από το έτος Χ" = από 1/1/Χ και μετά (επιβεβαιωμένο: ολόκληρο το
+      // ημερολογιακό έτος Χ μετράει, όχι μόνο μετά από αυτό).
+      if (!player.birth_date) return false;
+      return birthYearOf(player.birth_date) >= (constraint.value as number);
+    }
+    case "birth_year_until": {
+      // "Γεννημένοι έως το έτος Χ" = μέχρι και 31/12/Χ (ολόκληρο το έτος Χ μετράει).
+      if (!player.birth_date) return false;
+      return birthYearOf(player.birth_date) <= (constraint.value as number);
     }
     case "rating_min":
       return effectiveRating(player) >= (constraint.value as number);

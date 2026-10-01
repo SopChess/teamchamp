@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateBasicRoster } from "./basicRosterCheck";
+import { validateBasicRoster, boardCoverageStatus, describeConstraint } from "./basicRosterCheck";
 import type { RosterRules, RosterEntry, Player } from "./types";
 
 const rules: RosterRules = {
@@ -55,5 +55,50 @@ describe("validateBasicRoster", () => {
 
   it("άδειος κατάλογος", () => {
     expect(validateBasicRoster(rules, [], {})[0]).toMatch(/τουλάχιστον 4/);
+  });
+});
+
+describe("describeConstraint", () => {
+  it("κάθε τύπο όρου σε απλή γλώσσα", () => {
+    expect(describeConstraint({ type: "gender", value: "F" })).toBe("Γυναίκα");
+    expect(describeConstraint({ type: "gender", value: "M" })).toBe("Άνδρας");
+    expect(describeConstraint({ type: "gender", value: "any" })).toBe("");
+    expect(describeConstraint({ type: "birth_year_from", value: 2014 })).toBe("Γεννημένος/η από το 2014");
+    expect(describeConstraint({ type: "birth_year_until", value: 2014 })).toBe("Γεννημένος/η έως το 2014");
+    expect(describeConstraint({ type: "birth_after", value: "2010-01-01" })).toBe("Γεννημένος/η μετά από 2010-01-01");
+    expect(describeConstraint({ type: "rating_min", value: 1200 })).toBe("Βαθμός ≥ 1200");
+    expect(describeConstraint({ type: "rating_max", value: 1800 })).toBe("Βαθμός ≤ 1800");
+    expect(describeConstraint({ type: "alternates_allowed", value: [] })).toBe("");
+  });
+});
+
+describe("boardCoverageStatus — ζωντανές κάρτες σκακιερών (Σχέδιο Α: καθοδηγεί, δεν μπλοκάρει)", () => {
+  it("σκακιέρα χωρίς κανέναν αθλητή που να ταιριάζει → covered: false, με ετικέτα του όρου", () => {
+    const status = boardCoverageStatus(rules, [], {});
+    const board4 = status.find((s) => s.board === 4)!;
+    expect(board4).toEqual({ board: 4, label: "Γυναίκα", covered: false });
+  });
+
+  it("μόλις προστεθεί αθλήτρια που καλύπτει τη σκακιέρα 4, γίνεται covered: true", () => {
+    const players = { p1: player("p1", "F") };
+    const roster = [entry("p1", 1)];
+    const board4 = boardCoverageStatus(rules, roster, players).find((s) => s.board === 4)!;
+    expect(board4.covered).toBe(true);
+  });
+
+  it("οι σκακιέρες χωρίς όρους έχουν κενή ετικέτα", () => {
+    const board1 = boardCoverageStatus(rules, [], {}).find((s) => s.board === 1)!;
+    expect(board1.label).toBe("");
+  });
+
+  it("ΔΕΝ πετάει σφάλμα με λίγους αθλητές (σε αντίθεση με το validateBasicRoster) — απλώς όσες σκακιέρες δεν καλύπτονται ακόμα μένουν ακάλυπτες", () => {
+    const status = boardCoverageStatus(rules, [entry("p1", 1)], { p1: player("p1", "M") });
+    expect(status).toHaveLength(4);
+    expect(status.find((s) => s.board === 4)!.covered).toBe(false); // ο μοναδικός αθλητής δεν είναι κορίτσι
+  });
+
+  it("επιστρέφει τις σκακιέρες με τη σωστή σειρά αριθμού", () => {
+    const status = boardCoverageStatus(rules, [], {});
+    expect(status.map((s) => s.board)).toEqual([1, 2, 3, 4]);
   });
 });

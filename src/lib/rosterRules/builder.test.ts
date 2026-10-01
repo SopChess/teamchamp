@@ -40,4 +40,15 @@ describe("validateBoardRules", () => {
     const rules: BoardRule[] = [{ board: 1, constraints: [{ type: "rating_min", value: "abc" }] }];
     expect(validateBoardRules(rules)[0]).toMatch(/αριθμός/);
   });
+
+  it("δέχεται έγκυρο έτος γέννησης (νέος τύπος όρου)", () => {
+    expect(validateBoardRules([{ board: 1, constraints: [{ type: "birth_year_from", value: 2014 }] }])).toEqual([]);
+    expect(validateBoardRules([{ board: 1, constraints: [{ type: "birth_year_until", value: "2014" }] }])).toEqual([]);
+  });
+  it("πιάνει άκυρο/εκτός εύρους έτος γέννησης", () => {
+    expect(validateBoardRules([{ board: 1, constraints: [{ type: "birth_year_from", value: "" }] }])[0]).toMatch(/έτος γέννησης/);
+    expect(validateBoardRules([{ board: 1, constraints: [{ type: "birth_year_from", value: 1899 }] }])[0]).toMatch(/έτος γέννησης/);
+    expect(validateBoardRules([{ board: 1, constraints: [{ type: "birth_year_until", value: new Date().getFullYear() + 1 }] }])[0]).toMatch(/έτος γέννησης/);
+    expect(validateBoardRules([{ board: 1, constraints: [{ type: "birth_year_from", value: "abc" }] }])[0]).toMatch(/έτος γέννησης/);
+  });
 });

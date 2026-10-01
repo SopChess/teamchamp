@@ -1,6 +1,39 @@
-import type { RosterRules, RosterEntry, Player } from "./types";
+import type { RosterRules, RosterEntry, Player, BoardConstraint } from "./types";
 import { computeDefaultAssignment } from "./engine";
-import { CONSTRAINT_LABELS } from "./builder";
+
+/** Σύντομη, ανθρώπινη περιγραφή ενός όρου σκακιέρας — "Γυναίκα", "Από το 2014", "Βαθμός ≥ 1200". */
+export function describeConstraint(c: BoardConstraint): string {
+  switch (c.type) {
+    case "gender":
+      return c.value === "F" ? "Γυναίκα" : c.value === "M" ? "Άνδρας" : "";
+    case "birth_after":
+      return `Γεννημένος/η μετά από ${c.value}`;
+    case "birth_before":
+      return `Γεννημένος/η πριν από ${c.value}`;
+    case "birth_year_from":
+      return `Γεννημένος/η από το ${c.value}`;
+    case "birth_year_until":
+      return `Γεννημένος/η έως το ${c.value}`;
+    case "rating_min":
+      return `Βαθμός ≥ ${c.value}`;
+    case "rating_max":
+      return `Βαθμός ≤ ${c.value}`;
+    case "alternates_allowed":
+      return "";
+    default:
+      return "";
+  }
+}
+
+function describeConstraints(constraints: BoardConstraint[]): string {
+  return constraints.map(describeConstraint).filter(Boolean).join(", ");
+}
+
+function boardsInOrder(rules: RosterRules, boardCount: number): number[] {
+  return rules.assignment_mode === "fixed_category"
+    ? rules.board_rules.map((b) => b.board).sort((x, y) => x - y)
+    : Array.from({ length: boardCount }, (_, i) => i + 1);
+}
 
 /**
  * Έλεγχος της ΒΑΣΙΚΗΣ σύνθεσης (Στάδιο 1) έναντι των κανόνων της διοργάνωσης —
@@ -24,18 +57,11 @@ export function validateBasicRoster(
 
   const assignment = computeDefaultAssignment(rules, roster, players);
   const filledBoards = new Set(assignment.map((a) => a.board));
-  const boards =
-    rules.assignment_mode === "fixed_category"
-      ? rules.board_rules.map((b) => b.board).sort((x, y) => x - y)
-      : Array.from({ length: boardCount }, (_, i) => i + 1);
 
-  for (const board of boards) {
+  for (const board of boardsInOrder(rules, boardCount)) {
     if (filledBoards.has(board)) continue;
     const rule = rules.board_rules.find((b) => b.board === board);
-    const constraintText = (rule?.constraints ?? [])
-      .map((c) => `${CONSTRAINT_LABELS[c.type]}${c.type === "gender" ? `: ${c.value === "F" ? "Γυναίκα" : c.value === "M" ? "Άνδρας" : ""}` : ""}`)
-      .filter(Boolean)
-      .join(", ");
+    const constraintText = describeConstraints(rule?.constraints ?? []);
     errors.push(
       constraintText
         ? `Σκακιέρα ${board}: δεν υπάρχει αθλητής/τρια στον κατάλογο που να πληροί τον όρο (${constraintText}).`
@@ -44,4 +70,32 @@ export function validateBasicRoster(
   }
 
   return errors;
+}
+
+export interface BoardCoverage {
+  board: number;
+  /** Κενό αν η σκακιέρα δεν έχει κανέναν όρο (οποιοσδήποτε αθλητής επιτρέπεται). */
+  label: string;
+  covered: boolean;
+}
+
+/**
+ * Ζωντανή κατάσταση κάλυψης ανά σκακιέρα, για τις κάρτες του Portal Αρχηγού
+ * (Σχέδιο Α, επιβεβαιωμένο): ΚΑΘΟΔΗΓΕΙ, δεν μπλοκάρει καμία προσθήκη αθλητή.
+ * "covered" σημαίνει ότι ΚΑΠΟΙΟΣ στον τρέχοντα κατάλογο πληροί αυτή τη
+ * σκακιέρα — όχι απαραίτητα ότι θα παίξει εκεί στην πράξη.
+ */
+export function boardCoverageStatus(
+  rules: RosterRules,
+  roster: RosterEntry[],
+  players: Record<string, Player>
+): BoardCoverage[] {
+  const boardCount = rules.match_board_count ?? rules.board_rules.length;
+  const assignment = computeDefaultAssignment(rules, roster, players);
+  const filledBoards = new Set(assignment.map((a) => a.board));
+
+  return boardsInOrder(rules, boardCount).map((board) => {
+    const rule = rules.board_rules.find((b) => b.board === board);
+    return { board, label: describeConstraints(rule?.constraints ?? []), covered: filledBoards.has(board) };
+  });
 }
