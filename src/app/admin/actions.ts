@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { TIEBREAK_LABELS, type TiebreakKey } from "@/lib/standings/standings";
 import type { AudienceType } from "@/lib/teams/teams";
+import { isValidTournamentStatus, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 
 const AUDIENCE_TYPES: AudienceType[] = ["school", "eso_club", "free_team"];
 
@@ -30,6 +31,9 @@ export async function createCompetition(formData: FormData) {
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
   const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
   const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
+  const statusRaw = String(formData.get("status") ?? "open");
+  const status: TournamentStatus = isValidTournamentStatus(statusRaw) ? statusRaw : "open";
+  const requiresCertificate = formData.get("requires_certificate") === "on";
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -51,6 +55,8 @@ export async function createCompetition(formData: FormData) {
       registration_deadline: registrationDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
+      status,
+      requires_certificate: requiresCertificate,
     })
     .select("id")
     .single();
@@ -83,6 +89,9 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
   const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
   const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
+  const statusRaw = String(formData.get("status") ?? "open");
+  const status: TournamentStatus = isValidTournamentStatus(statusRaw) ? statusRaw : "open";
+  const requiresCertificate = formData.get("requires_certificate") === "on";
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -102,6 +111,8 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       registration_deadline: registrationDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
+      status,
+      requires_certificate: requiresCertificate,
     })
     .eq("id", competitionId);
 

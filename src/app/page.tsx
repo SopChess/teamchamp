@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { registrationStatus } from "@/lib/competitions/registration";
+import { isRegistrationOpen, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 import almaLogo from "../../public/alma-logo.png";
 
 export const dynamic = "force-dynamic";
@@ -55,12 +55,12 @@ export default async function Home() {
   const supabase = createClient();
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("name, registration_deadline");
+    .select("name, registration_deadline, status");
 
-  const open = (competitions ?? []).filter((c) => registrationStatus(c.registration_deadline) !== "closed");
+  const open = (competitions ?? []).filter((c) => isRegistrationOpen((c.status ?? "open") as TournamentStatus, c.registration_deadline));
 
   return (
-    <div className="min-h-screen px-6 py-14 flex flex-col items-center gap-10">
+    <div className="chess-bg min-h-screen px-6 py-14 flex flex-col items-center gap-10">
       <div className="max-w-sm w-full flex flex-col items-center text-center gap-4">
         <Image src={almaLogo} alt="Team ALMA" width={168} height={168} priority />
         <p className="text-sm text-muted leading-relaxed max-w-xs">

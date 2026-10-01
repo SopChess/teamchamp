@@ -18,15 +18,19 @@ export interface CaptainTab {
  * κατάσταση μιας φόρμας να μη χάνεται αν ο χρήστης αλλάξει καρτέλα και
  * ξαναγυρίσει.
  */
+// Tailwind χρειάζεται τις κλάσεις γραμμένες αυτούσιες (όχι `grid-cols-${n}` δυναμικά) για
+// να τις συμπεριλάβει στο build — εξ ου και ο πίνακας αντί για template string.
+const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6" };
+
 export default function TabsShell({ tabs, defaultTab }: { tabs: CaptainTab[]; defaultTab?: string }) {
   const [active, setActive] = useState(defaultTab ?? tabs[0]?.id ?? "");
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Grid ισόποσων στηλών — ΠΟΤΕ scroll, όλες οι καρτέλες πάντα ορατές μαζί
-          (επιβεβαιωμένο). Σε στενή οθόνη η ετικέτα σπάει σε 2 γραμμές αντί να κρύβεται
-          ή να απαιτεί κύλιση· σε φαρδιά οθόνη (pc) χωράει άνετα σε μία γραμμή. */}
-      <div className="grid grid-cols-5 gap-1 sm:gap-1.5" role="tablist">
+      {/* Grid ισόποσων στηλών (τόσες όσες τα tabs) — ΠΟΤΕ scroll, όλες οι καρτέλες πάντα
+          ορατές μαζί (επιβεβαιωμένο). Σε στενή οθόνη η ετικέτα σπάει σε 2 γραμμές αντί να
+          κρύβεται ή να απαιτεί κύλιση· σε φαρδιά οθόνη (pc) χωράει άνετα σε μία γραμμή. */}
+      <div className={`grid ${GRID_COLS[tabs.length] ?? "grid-cols-5"} gap-1 sm:gap-1.5`} role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}

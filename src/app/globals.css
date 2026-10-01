@@ -17,3 +17,17 @@ body {
 .soft-glow {
   animation: soft-glow-pulse 2.4s ease-in-out infinite;
 }
+
+/* Απαλό σκακιστικό φόντο — καρό σκακιέρας σε πολύ χαμηλή διαφάνεια, καθαρό CSS
+   (χωρίς αρχείο εικόνας, ελαφρύ). Χρησιμοποιείται στην αρχική και στα portals. */
+.chess-bg {
+  background-color: #0B1220;
+  background-image:
+    linear-gradient(45deg, rgba(201, 161, 90, 0.035) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(201, 161, 90, 0.035) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(201, 161, 90, 0.035) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(201, 161, 90, 0.035) 75%);
+  background-size: 64px 64px;
+  background-position: 0 0, 0 32px, 32px -32px, -32px 0px;
+  background-attachment: fixed;
+}

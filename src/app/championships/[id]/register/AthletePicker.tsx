@@ -250,8 +250,8 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
           ) : (
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-2">
-                <input className={`${inputCls} min-w-0`} placeholder="Όνομα (λατινικά)" value={manualFirst} onChange={(e) => setManualFirst(e.target.value)} />
                 <input className={`${inputCls} min-w-0`} placeholder="Επώνυμο (λατινικά)" value={manualLast} onChange={(e) => setManualLast(e.target.value)} />
+                <input className={`${inputCls} min-w-0`} placeholder="Όνομα (λατινικά)" value={manualFirst} onChange={(e) => setManualFirst(e.target.value)} />
               </div>
               <input className={`${inputCls} min-w-0`} type="date" placeholder="Ημερομηνία γέννησης" value={manualBirth} onChange={(e) => setManualBirth(e.target.value)} />
             </div>

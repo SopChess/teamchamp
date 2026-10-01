@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { registerTeam } from "./actions";
 import { searchDirectoryForRegistration, searchDirectoryByNumberForRegistration } from "./directorySearch";
-import { registrationStatus } from "@/lib/competitions/registration";
+import { isRegistrationOpen, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 import { AUDIENCE_FIELD_LABEL, AUDIENCE_FIELD_EXAMPLE, requiresEsoCode, type AudienceType } from "@/lib/teams/teams";
 import SavableForm from "@/components/SavableForm";
 import AthletePicker from "./AthletePicker";
@@ -17,12 +17,12 @@ export default async function RegisterPage({ params }: { params: { id: string } 
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, audience_type, registration_deadline")
+    .select("id, name, audience_type, registration_deadline, status")
     .eq("id", params.id)
     .maybeSingle();
   if (!competition) notFound();
 
-  const status = registrationStatus(competition.registration_deadline);
+  const open = isRegistrationOpen((competition.status ?? "open") as TournamentStatus, competition.registration_deadline);
   const audienceType = (competition.audience_type as AudienceType) ?? "eso_club";
   const fieldLabel = AUDIENCE_FIELD_LABEL[audienceType];
   const fieldExample = AUDIENCE_FIELD_EXAMPLE[audienceType];
@@ -45,7 +45,7 @@ export default async function RegisterPage({ params }: { params: { id: string } 
         <h1 className="font-serif font-bold text-2xl mt-2">Εγγραφή Ομάδας</h1>
       </div>
 
-      {status === "closed" ? (
+      {!open ? (
         <div className="bg-card border border-red-400/40 rounded-xl p-4 text-sm">
           Οι εγγραφές για αυτή τη διοργάνωση έχουν κλείσει.
         </div>

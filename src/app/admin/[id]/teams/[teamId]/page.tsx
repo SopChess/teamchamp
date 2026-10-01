@@ -114,8 +114,8 @@ export default async function AdminTeamDetailPage({ params }: { params: { id: st
           <summary className="text-xs text-muted cursor-pointer">ή χειροκίνητη καταχώρηση</summary>
           <SavableForm action={boundAddManual} resetOnSuccess successMessage="Ο αθλητής προστέθηκε." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4 mt-2">
             <div className="flex gap-2">
-              <input name="first_name" required placeholder="Όνομα (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
               <input name="last_name" required placeholder="Επώνυμο (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
+              <input name="first_name" required placeholder="Όνομα (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
             </div>
             <select name="gender" required className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
               <option value="">— Φύλο —</option>

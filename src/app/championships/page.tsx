@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { registrationStatus, REGISTRATION_STATUS_LABEL } from "@/lib/competitions/registration";
+import {
+  effectiveTournamentStatus, isRegistrationOpen, TOURNAMENT_STATUS_LABEL, type TournamentStatus,
+} from "@/lib/competitions/tournamentStatus";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,17 +17,18 @@ function formatDeadline(value: string | null): string | null {
   return new Date(value).toLocaleString("el-GR", { dateStyle: "medium", timeStyle: "short" });
 }
 
-const STATUS_STYLE: Record<string, string> = {
+const STATUS_STYLE: Record<TournamentStatus, string> = {
   open: "bg-good/15 text-good border-good/30",
   closed: "bg-red-400/15 text-red-400 border-red-400/30",
-  unscheduled: "bg-panel text-muted border-cardBorder",
+  in_progress: "bg-gold/15 text-gold border-gold/30",
+  completed: "bg-panel text-muted border-cardBorder",
 };
 
 export default async function ChampionshipsPage() {
   const supabase = createClient();
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, name, starts_on, ends_on, venue, announcement_url, venue_maps_url, registration_deadline")
+    .select("id, name, starts_on, ends_on, venue, announcement_url, venue_maps_url, registration_deadline, status")
     .order("starts_on", { ascending: false, nullsFirst: false });
 
   return (
@@ -42,7 +45,8 @@ export default async function ChampionshipsPage() {
           const from = formatDate(c.starts_on);
           const to = formatDate(c.ends_on);
           const dates = from && to && from !== to ? `${from} – ${to}` : from ?? to;
-          const status = registrationStatus(c.registration_deadline);
+          const storedStatus = (c.status ?? "open") as TournamentStatus;
+          const status = effectiveTournamentStatus(storedStatus, c.registration_deadline);
           const deadline = formatDeadline(c.registration_deadline);
 
           return (
@@ -57,7 +61,7 @@ export default async function ChampionshipsPage() {
                 <span
                   className={`shrink-0 text-xs border rounded-full px-2.5 py-1 whitespace-nowrap ${STATUS_STYLE[status]} ${status === "open" ? "soft-glow" : ""}`}
                 >
-                  {REGISTRATION_STATUS_LABEL[status]}
+                  {TOURNAMENT_STATUS_LABEL[status]}
                 </span>
               </div>
 

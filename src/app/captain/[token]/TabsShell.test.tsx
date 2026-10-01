@@ -61,6 +61,22 @@ describe("TabsShell", () => {
     void container;
   });
 
+  it("το πλέγμα έχει τόσες στήλες όσα τα tabs (π.χ. 4 όταν λείπει ένα tab)", () => {
+    const { container } = render(
+      <TabsShell
+        tabs={[
+          { id: "a", label: "Ομάδα", content: <div>Α</div> },
+          { id: "b", label: "Αθλητές", content: <div>Β</div> },
+          { id: "c", label: "Σύνθεση", content: <div>Γ</div> },
+          { id: "d", label: "Αντίπαλος", content: <div>Δ</div> },
+        ]}
+      />
+    );
+    const tablist = container.querySelector('[role="tablist"]')!;
+    expect(tablist.className).toContain("grid-cols-4");
+    expect(tablist.className).not.toContain("grid-cols-5");
+  });
+
   it("σέβεται το defaultTab", () => {
     render(
       <TabsShell

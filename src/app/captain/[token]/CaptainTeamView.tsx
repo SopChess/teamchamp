@@ -54,7 +54,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const { data: team } = await supabase
     .from("teams")
     .select(
-      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note)"
+      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate)"
     )
     .eq("id", teamId)
     .maybeSingle();
@@ -86,6 +86,8 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const feeStatus = isEntryFeeStatus(team.entry_fee_status) ? team.entry_fee_status : "pending";
   const competitionFee = Array.isArray(team.competitions) ? team.competitions[0] : team.competitions;
   const feeAmount = competitionFee?.entry_fee_amount ?? null;
+  const needsCertificate = competitionFee?.requires_certificate ?? true;
+  const needsPaymentTab = needsCertificate || feeAmount != null;
   const boundUploadCertificate = uploadAttendanceCertificate.bind(null, params.token, teamId);
   const boundEntryFeeMethod = setEntryFeeMethod.bind(null, params.token, teamId);
   const roundRules = round.kind === "play" && !round.composition ? await loadRules(supabase, team.competition_id) : null;
@@ -273,8 +275,8 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
         <SavableForm action={boundAddPlayer} resetOnSuccess successMessage="Ο αθλητής προστέθηκε." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
           <div className="text-xs uppercase tracking-wide text-muted">Χειροκίνητη προσθήκη (αν δεν βρίσκεται στο μητρώο ΕΣΟ) · λατινικά</div>
           <div className="flex gap-2">
-            <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
             <input name="last_name" required placeholder="Επώνυμο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
+            <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
           </div>
           <div className="flex gap-2">
             <input name="birth_date" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
@@ -397,6 +399,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
 
   const paymentTabContent = (
     <>
+      {needsCertificate && (
       <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Βεβαίωση Φοίτησης</div>
         <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
@@ -436,6 +439,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
           <p className="text-xs text-muted">PDF ή εικόνα (JPG/PNG), έως 8 MB.</p>
         </div>
       </div>
+      )}
 
       {feeAmount != null && (
         <div>
@@ -472,7 +476,9 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     { id: "athletes", label: "Αθλητές", content: athletesTabContent, attention: uncoveredCount > 0 },
     { id: "round", label: "Σύνθεση Γύρου", content: roundTabContent },
     { id: "opponent", label: "Αντίπαλος", content: opponentTabContent },
-    { id: "payment", label: "Πληρωμή/Βεβαίωση", content: paymentTabContent },
+    // Το tab λείπει εντελώς όταν η διοργάνωση δεν χρειάζεται ΟΥΤΕ βεβαίωση ΟΥΤΕ παράβολο
+    // (επιβεβαιωμένο: δύο ανεξάρτητοι διακόπτες, ρυθμισμένοι χωριστά από τον admin).
+    ...(needsPaymentTab ? [{ id: "payment", label: "Πληρωμή/Βεβαίωση", content: paymentTabContent }] : []),
   ];
 
   return (

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveClubAndNumber } from "@/lib/teams/resolveClub";
 import { teamDisplayName, type AudienceType } from "@/lib/teams/teams";
-import { registrationStatus } from "@/lib/competitions/registration";
+import { isRegistrationOpen, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 import { findOrCreateCaptainAccount } from "@/lib/captain/account";
 import { isValidPhone } from "@/lib/captain/identity";
 import { isValidEmail, normalizeEmail } from "@/lib/accessRequest";
@@ -33,11 +33,11 @@ export async function registerTeam(competitionId: string, formData: FormData): P
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("name, starts_on, ends_on, venue, audience_type, max_teams_per_club, registration_deadline")
+    .select("name, starts_on, ends_on, venue, audience_type, max_teams_per_club, registration_deadline, status, requires_certificate")
     .eq("id", competitionId)
     .single();
   if (!competition) throw new Error("Η διοργάνωση δεν βρέθηκε.");
-  if (registrationStatus(competition.registration_deadline) === "closed") {
+  if (!isRegistrationOpen((competition.status ?? "open") as TournamentStatus, competition.registration_deadline)) {
     throw new Error("Οι εγγραφές για αυτή τη διοργάνωση έχουν κλείσει.");
   }
   const audienceType = (competition.audience_type as AudienceType) ?? "eso_club";
