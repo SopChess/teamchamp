@@ -196,11 +196,17 @@ describe("έλεγχος διπλής εγγραφής σε όλη τη διορ
     expect(rosterOf("team3")).toHaveLength(1);
   });
 
-  it("η χειροκίνητη καταχώρηση του ίδιου αθλητή (λατινικά) αναγνωρίζεται ως διπλή", async () => {
-    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M"); // ΤΣΟΥΡΟΣ ΓΕΩΡΓΙΟΣ, γεν. 2012
+  it("η χειροκίνητη καταχώρηση του ίδιου αθλητή (λατινικά, ΙΔΙΑ ακριβής ημερομηνία γέννησης) αναγνωρίζεται ως διπλή", async () => {
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M"); // ΤΣΟΥΡΟΣ ΓΕΩΡΓΙΟΣ, γεν. 17/08/2012
     await expect(
-      addPlayerToRoster("tok2", undefined, fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "2012-01-01", gender: "M" }))
+      addPlayerToRoster("tok2", undefined, fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "2012-08-17", gender: "M" }))
     ).rejects.toThrow(/ήδη δηλωμένος σε άλλη ομάδα/);
+  });
+
+  it("ίδιο όνομα αλλά ΔΙΑΦΟΡΕΤΙΚΗ ακριβής ημερομηνία (ίδιο έτος) ΔΕΝ αναγνωρίζεται πια ως διπλή (επιβεβαιωμένο: ακριβής ημερομηνία, όχι μόνο έτος)", async () => {
+    await addDirectoryPlayerToRoster("tok1", undefined, "PLR-00017", "M"); // γεν. 17/08/2012
+    await addPlayerToRoster("tok2", undefined, fd({ first_name: "Georgios", last_name: "Tsouros", birth_date: "2012-01-01", gender: "M" }));
+    expect(rosterOf("team2")).toHaveLength(1); // επιτράπηκε — διαφορετική ακριβής ημερομηνία
   });
 
   it("ίδιο ονοματεπώνυμο με ΔΙΑΦΟΡΕΤΙΚΟ έτος γέννησης είναι άλλος αθλητής", async () => {

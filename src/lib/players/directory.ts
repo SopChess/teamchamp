@@ -149,9 +149,14 @@ export interface AthleteIdentity {
 }
 
 /**
- * Είναι ο ίδιος αθλητής; Ίδιος κωδικός καταλόγου ή ίδιο ΑΜ ΕΣΟ, ή ίδιο ονοματεπώνυμο
- * (μορφή ΕΛΟΤ 743, άρα ίδιο είτε γράφτηκε ελληνικά είτε λατινικά) και — αν και οι δύο
- * έχουν έτος γέννησης — ίδιο έτος. Ίδια λογική με τον έλεγχο διπλής εγγραφής του SopRegSB.
+ * Είναι ο ίδιος αθλητής; Κατά προτεραιότητα ο αριθμός μητρώου (ίδιος κωδικός καταλόγου
+ * ή ίδιο ΑΜ ΕΣΟ) — επιβεβαιωμένο. Χωρίς αριθμό μητρώου και στους δύο, απαιτείται ΚΑΙ το
+ * ονοματεπώνυμο (μορφή ΕΛΟΤ 743, άρα ίδιο είτε γράφτηκε ελληνικά είτε λατινικά) ΚΑΙ η
+ * ακριβής ημερομηνία γέννησης μαζί (επιβεβαιωμένο: όχι μόνο το έτος) — πολύ κοινά
+ * ονόματα στην Ελλάδα, το όνομα από μόνο του δεν αρκεί. Αν λείπει η ημερομηνία γέννησης
+ * από τον έναν ή και τους δύο, ΔΕΝ θεωρούνται ο ίδιος αθλητής από αυτόν τον έλεγχο —
+ * προτιμάται να περάσει σπάνια ένας πραγματικός διπλός αθλητής χωρίς ημερομηνία, παρά να
+ * μπλοκαριστεί κατά λάθος κάποιος άλλος με κοινό όνομα.
  */
 export function sameAthlete(a: AthleteIdentity, b: AthleteIdentity): boolean {
   if (a.directory_id && b.directory_id && a.directory_id === b.directory_id) return true;
@@ -160,8 +165,6 @@ export function sameAthlete(a: AthleteIdentity, b: AthleteIdentity): boolean {
     normalizeName(a.last_name) === normalizeName(b.last_name) &&
     normalizeName(a.first_name) === normalizeName(b.first_name);
   if (!sameName) return false;
-  const ya = a.birth_date ? a.birth_date.slice(0, 4) : "";
-  const yb = b.birth_date ? b.birth_date.slice(0, 4) : "";
-  if (ya && yb) return ya === yb;
-  return true;
+  if (a.birth_date && b.birth_date) return a.birth_date === b.birth_date;
+  return false;
 }

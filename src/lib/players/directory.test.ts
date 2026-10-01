@@ -181,14 +181,23 @@ describe("sameAthlete — έλεγχος διπλής εγγραφής", () => {
     expect(sameAthlete(a, { first_name: "X", last_name: "Y", directory_id: "PLR-1" })).toBe(true);
     expect(sameAthlete(a, { first_name: "X", last_name: "Y", national_id: "20" })).toBe(true);
   });
-  it("ίδιο όνομα είτε ελληνικά είτε λατινικά, με ίδιο έτος", () => {
-    expect(sameAthlete(a, { first_name: "ΓΕΩΡΓΙΟΣ", last_name: "ΤΣΟΥΡΟΣ", birth_date: "2012-09-09" })).toBe(true);
+  it("ίδιο όνομα είτε ελληνικά είτε λατινικά, με ΑΚΡΙΒΩΣ ίδια ημερομηνία γέννησης", () => {
+    expect(sameAthlete(a, { first_name: "ΓΕΩΡΓΙΟΣ", last_name: "ΤΣΟΥΡΟΣ", birth_date: "2012-05-05" })).toBe(true);
+  });
+  it("ίδιο όνομα ΚΑΙ ίδιο έτος αλλά ΔΙΑΦΟΡΕΤΙΚΗ ημέρα/μήνας → ΔΕΝ είναι ο ίδιος αθλητής (επιβεβαιωμένο: ακριβής ημερομηνία, όχι μόνο έτος)", () => {
+    expect(sameAthlete(a, { first_name: "Georgios", last_name: "TSOUROS", birth_date: "2012-09-09" })).toBe(false);
   });
   it("ίδιο όνομα αλλά διαφορετικό έτος = διαφορετικός αθλητής (π.χ. πατέρας/γιος)", () => {
     expect(sameAthlete(a, { first_name: "Georgios", last_name: "TSOUROS", birth_date: "1946-01-01" })).toBe(false);
   });
-  it("ίδιο όνομα χωρίς έτος στον έναν → θεωρείται ίδιος (συντηρητικά)", () => {
-    expect(sameAthlete(a, { first_name: "Georgios", last_name: "Tsouros" })).toBe(true);
+  it("ίδιο όνομα χωρίς ημερομηνία γέννησης στον έναν → ΔΕΝ θεωρείται ίδιος (επιβεβαιωμένο: πολύ κοινά ονόματα, το όνομα μόνο του δεν αρκεί)", () => {
+    expect(sameAthlete(a, { first_name: "Georgios", last_name: "Tsouros" })).toBe(false);
+  });
+  it("ίδιο όνομα, ΚΑΝΕΝΑΣ από τους δύο δεν έχει ημερομηνία γέννησης → ΔΕΝ θεωρείται ίδιος", () => {
+    expect(sameAthlete(
+      { first_name: "Georgios", last_name: "Tsouros" },
+      { first_name: "Georgios", last_name: "Tsouros" }
+    )).toBe(false);
   });
   it("διαφορετικό όνομα, διαφορετικοί κωδικοί → διαφορετικός", () => {
     expect(sameAthlete(a, { first_name: "Nikos", last_name: "TSOUROS", national_id: "21", directory_id: "PLR-2" })).toBe(false);

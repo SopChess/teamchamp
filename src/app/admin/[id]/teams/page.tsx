@@ -17,10 +17,11 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// "confirmed" αφαιρέθηκε σκόπιμα (επιβεβαιωμένο backlog item): ήταν ορφανή τιμή — μόνο
+// το πρώην κουμπί "Υποβολή Σύνθεσης" την έθετε, και έχει πλέον αφαιρεθεί εντελώς.
 const STATUS_LABELS: Record<string, string> = {
   declared: "Δηλωμένη",
   confirmation_form_open: "Φόρμα Επιβεβαίωσης Ανοιχτή",
-  confirmed: "Επιβεβαιωμένη",
   invalid: "Άκυρη",
 };
 

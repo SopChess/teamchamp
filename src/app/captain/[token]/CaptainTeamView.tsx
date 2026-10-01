@@ -27,10 +27,11 @@ import BoardCoverageCards from "./BoardCoverageCards";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// "confirmed" αφαιρέθηκε σκόπιμα (επιβεβαιωμένο backlog item): ήταν ορφανή τιμή — μόνο
+// το πρώην κουμπί "Υποβολή Σύνθεσης" την έθετε, και έχει πλέον αφαιρεθεί εντελώς.
 const STATUS_LABELS: Record<string, string> = {
   declared: "Δηλωμένη",
   confirmation_form_open: "Φόρμα Επιβεβαίωσης Ανοιχτή",
-  confirmed: "Επιβεβαιωμένη",
   invalid: "Άκυρη",
 };
 
@@ -53,7 +54,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const { data: team } = await supabase
     .from("teams")
     .select(
-      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate)"
+      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate, registration_deadline)"
     )
     .eq("id", teamId)
     .maybeSingle();
@@ -94,9 +95,14 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const initialAssignments =
     roundRules && roundRoster ? computeDefaultAssignment(roundRules, roundRoster.roster, roundRoster.players) : [];
 
-  const deadlinePassed =
+  // Ίδια λογική με το assertRosterEditable στον server (actions.ts) — επιβεβαιωμένο bug fix:
+  // πριν κοιτούσε ΜΟΝΟ το παλιό team.roster_lock_deadline (άδειο πλέον για αυτο-εγγεγραμμένες
+  // ομάδες), ΠΟΤΕ την πραγματική προθεσμία εγγραφών της διοργάνωσης.
+  const registrationDeadline = competitionFee?.registration_deadline ?? null;
+  const registrationDeadlinePassed = !!registrationDeadline && new Date(registrationDeadline) < new Date();
+  const teamDeadlinePassed =
     !!team.roster_lock_deadline && new Date(team.roster_lock_deadline) < new Date();
-  const editable = !team.roster_locked && !deadlinePassed;
+  const editable = !team.roster_locked && !registrationDeadlinePassed && !teamDeadlinePassed;
 
   const boundAddPlayer = addPlayerToRoster.bind(null, params.token, teamId);
   const boundRemove = removeRosterEntry.bind(null, params.token, teamId);
@@ -129,11 +135,11 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     <>
       <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex items-center justify-between">
         <div>
-          {team.roster_lock_deadline && (
+          {registrationDeadline && (
             <>
-              <div className="text-xs text-muted">Κατάθεση Βασικής Σύνθεσης έως</div>
+              <div className="text-xs text-muted">Επεξεργασία σύνθεσης έως</div>
               <div className="text-sm font-semibold mt-0.5">
-                {new Date(team.roster_lock_deadline).toLocaleString("el-GR")}
+                {new Date(registrationDeadline).toLocaleString("el-GR")}
               </div>
             </>
           )}
