@@ -8,7 +8,7 @@ import { registrationStatus } from "@/lib/competitions/registration";
 import { findOrCreateCaptainAccount } from "@/lib/captain/account";
 import { isValidPhone } from "@/lib/captain/identity";
 import { isValidEmail, normalizeEmail } from "@/lib/accessRequest";
-import { cleanName } from "@/lib/transliterate";
+
 import { sendCaptainAccessEmail } from "@/lib/email";
 import { parsePendingAthletes } from "@/lib/rosterRules/pendingAthlete";
 import { findDirectoryRowById } from "@/lib/players/server";
@@ -47,8 +47,9 @@ export async function registerTeam(competitionId: string, formData: FormData): P
   const newName = String(formData.get("new_team_name") ?? "");
   const esoCode = String(formData.get("eso_code") ?? "");
 
-  const firstName = cleanName(String(formData.get("first_name") ?? ""));
-  const lastName = cleanName(String(formData.get("last_name") ?? ""));
+  // Τα στοιχεία του ΥΠΕΥΘΥΝΟΥ (όχι των αθλητών) μένουν ελληνικά, κεφαλαία — επιβεβαιωμένο.
+  const firstName = String(formData.get("first_name") ?? "").trim().toUpperCase();
+  const lastName = String(formData.get("last_name") ?? "").trim().toUpperCase();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = normalizeEmail(String(formData.get("email") ?? ""));
 

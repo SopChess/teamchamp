@@ -80,8 +80,8 @@ export default async function RegisterPage({ params }: { params: { id: string } 
           <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
             <div className="text-xs uppercase tracking-wide text-muted">Στοιχεία Υπευθύνου</div>
             <div className="flex gap-2">
-              <input name="first_name" required placeholder="Όνομα (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-              <input name="last_name" required placeholder="Επώνυμο (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
+              <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1 min-w-0 uppercase" />
+              <input name="last_name" required placeholder="Επώνυμο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1 min-w-0 uppercase" />
             </div>
             <input name="phone" required placeholder="Τηλέφωνο" type="tel" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />
             <input name="email" required placeholder="Email" type="email" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />

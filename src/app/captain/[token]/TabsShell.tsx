@@ -23,7 +23,10 @@ export default function TabsShell({ tabs, defaultTab }: { tabs: CaptainTab[]; de
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-1.5 overflow-x-auto -mx-6 px-6 pb-1" role="tablist">
+      {/* Grid ισόποσων στηλών — ΠΟΤΕ scroll, όλες οι καρτέλες πάντα ορατές μαζί
+          (επιβεβαιωμένο). Σε στενή οθόνη η ετικέτα σπάει σε 2 γραμμές αντί να κρύβεται
+          ή να απαιτεί κύλιση· σε φαρδιά οθόνη (pc) χωράει άνετα σε μία γραμμή. */}
+      <div className="grid grid-cols-5 gap-1 sm:gap-1.5" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -31,7 +34,7 @@ export default function TabsShell({ tabs, defaultTab }: { tabs: CaptainTab[]; de
             role="tab"
             aria-selected={active === t.id}
             onClick={() => setActive(t.id)}
-            className={`relative shrink-0 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`relative min-w-0 px-1 sm:px-2.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold leading-tight text-center transition-colors ${
               active === t.id ? "bg-gold text-bg" : "bg-panel text-muted border border-cardBorder"
             }`}
           >

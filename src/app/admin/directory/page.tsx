@@ -42,9 +42,9 @@ export default async function DirectoryPage() {
         <Link href="/admin" className="text-xs text-muted hover:text-gold">
           ← Διοργανώσεις
         </Link>
-        <h1 className="font-serif font-bold text-2xl mt-2">Κατάλογος Αθλητών</h1>
+        <h1 className="font-serif font-bold text-2xl mt-2">Μητρώο ΕΣΟ</h1>
         <p className="text-xs text-muted mt-1">
-          Ο κατάλογος βοηθά στην εγγραφή ομάδων: ο υπεύθυνος αναζητά αθλητή και τα στοιχεία του
+          Το μητρώο βοηθά στην εγγραφή ομάδων: ο υπεύθυνος αναζητά αθλητή και τα στοιχεία του
           συμπληρώνονται αυτόματα. Περιέχει προσωπικά δεδομένα (και ανηλίκων), γι' αυτό διαβάζεται μόνο
           από τον server και δεν είναι προσβάσιμος με το δημόσιο κλειδί.
         </p>
@@ -53,7 +53,7 @@ export default async function DirectoryPage() {
       {!hasServiceKey && (
         <div className="bg-card border border-red-400/40 rounded-xl p-4 text-sm">
           <div className="font-semibold text-red-400 mb-1">Λείπει το service key</div>
-          Ο κατάλογος δεν μπορεί να διαβαστεί μέχρι να οριστεί η μεταβλητή{" "}
+          Το μητρώο δεν μπορεί να διαβαστεί μέχρι να οριστεί η μεταβλητή{" "}
           <code>SUPABASE_SERVICE_ROLE_KEY</code> στο Vercel (Settings → Environment Variables) και να γίνει
           Redeploy. Χρησιμοποιήστε το κλειδί <code>service_role</code> από την καρτέλα Legacy API Keys του
           Supabase, και όχι με πρόθεμα NEXT_PUBLIC_.
@@ -70,12 +70,12 @@ export default async function DirectoryPage() {
       {hasServiceKey && total !== null && (
         <div className="bg-card border border-cardBorder rounded-xl p-4 flex items-center justify-between">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Αθλητές στον κατάλογο</div>
+            <div className="text-xs uppercase tracking-wide text-muted">Αθλητές στο μητρώο</div>
             <div className="font-serif font-bold text-2xl mt-1">{total.toLocaleString("el-GR")}</div>
           </div>
           {total === 0 && (
             <div className="text-xs text-muted text-right max-w-[14rem]">
-              Ο κατάλογος είναι άδειος. Φορτώστε το CSV από το Table Editor του Supabase (Import data from CSV).
+              Το μητρώο είναι άδειο. Φορτώστε το CSV από το Table Editor του Supabase (Import data from CSV).
             </div>
           )}
         </div>

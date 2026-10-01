@@ -271,7 +271,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
 
       {editable && (
         <SavableForm action={boundAddPlayer} resetOnSuccess successMessage="Ο αθλητής προστέθηκε." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
-          <div className="text-xs uppercase tracking-wide text-muted">Χειροκίνητη προσθήκη (αν δεν βρίσκεται στον κατάλογο) · λατινικά</div>
+          <div className="text-xs uppercase tracking-wide text-muted">Χειροκίνητη προσθήκη (αν δεν βρίσκεται στο μητρώο ΕΣΟ) · λατινικά</div>
           <div className="flex gap-2">
             <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
             <input name="last_name" required placeholder="Επώνυμο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
@@ -476,7 +476,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   ];
 
   return (
-    <div className="min-h-screen px-6 py-10 max-w-sm mx-auto flex flex-col gap-6">
+    <div className="min-h-screen px-6 py-10 max-w-sm md:max-w-xl mx-auto flex flex-col gap-6">
       <div>
         <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
         <div className="text-xs text-muted mb-1">Portal Αρχηγού</div>

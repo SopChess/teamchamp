@@ -101,11 +101,11 @@ export default function PlayerSearch({ search, searchByNumber, add, available = 
 
   return (
     <div className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-4">
-      <div className="text-xs uppercase tracking-wide text-muted">Προσθήκη αθλητή από τον κατάλογο</div>
+      <div className="text-xs uppercase tracking-wide text-muted">Προσθήκη αθλητή από το Μητρώο ΕΣΟ</div>
 
       {!available && (
         <p className="text-sm text-muted">
-          Η αναζήτηση στον κατάλογο αθλητών δεν είναι ακόμα ενεργή. Προσθέστε τον αθλητή με τη
+          Η αναζήτηση στο μητρώο ΕΣΟ δεν είναι ακόμα ενεργή. Προσθέστε τον αθλητή με τη
           χειροκίνητη φόρμα παρακάτω ή ενημερώστε τον διαχειριστή.
         </p>
       )}

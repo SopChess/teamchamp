@@ -193,18 +193,31 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
 
       {!selected && !manual && (
         <div className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
+          <div className="text-xs uppercase tracking-wide text-muted">Αναζήτηση στο Μητρώο ΕΣΟ</div>
           <div className="grid grid-cols-2 gap-2">
-            <input className={inputCls} placeholder="Επώνυμο" value={epitheto} onChange={(e) => setEpitheto(e.target.value)} autoComplete="off" />
-            <input className={inputCls} placeholder="Όνομα" value={onoma} onChange={(e) => setOnoma(e.target.value)} autoComplete="off" />
+            <input className={`${inputCls} min-w-0`} placeholder="Επώνυμο" value={epitheto} onChange={(e) => setEpitheto(e.target.value)} autoComplete="off" />
+            <input className={`${inputCls} min-w-0`} placeholder="Όνομα" value={onoma} onChange={(e) => setOnoma(e.target.value)} autoComplete="off" />
           </div>
           <div className="flex gap-2">
-            <input className={inputCls} placeholder="ή ΑΜ ΕΣΟ / FIDE ID" value={number} onChange={(e) => setNumber(e.target.value)} inputMode="numeric" autoComplete="off" />
-            <button type="button" onClick={lookupNumber} className="bg-panel border border-cardBorder rounded-lg px-4 text-sm whitespace-nowrap">
+            <input className={`${inputCls} min-w-0`} placeholder="ή ΑΜ ΕΣΟ / FIDE ID" value={number} onChange={(e) => setNumber(e.target.value)} inputMode="numeric" autoComplete="off" />
+            <button type="button" onClick={lookupNumber} className="bg-panel border border-cardBorder rounded-lg px-4 text-sm whitespace-nowrap flex-shrink-0">
               Αναζήτηση
             </button>
           </div>
+
+          {/* Μόνιμο κουμπί, ΠΑΝΤΑ ορατό πάνω από τα αποτελέσματα — όχι μόνο όταν η αναζήτηση
+              δεν βρίσκει τίποτα (επιβεβαιωμένο bug fix: πριν κρυβόταν πίσω από τα αποτελέσματα
+              όταν το επώνυμο έφερνε άλλους αθλητές, και δεν άφηνε να γίνει χειροκίνητη προσθήκη). */}
+          <button
+            type="button"
+            onClick={() => setManual(true)}
+            className="self-start text-xs text-gold underline"
+          >
+            Δεν βρίσκετε τον αθλητή; Χειροκίνητη καταχώρηση
+          </button>
+
           {hits.length > 0 && (
-            <ul className="flex flex-col divide-y divide-cardBorder border border-cardBorder rounded-lg overflow-hidden">
+            <ul className="flex flex-col divide-y divide-cardBorder border border-cardBorder rounded-lg overflow-y-auto max-h-56">
               {hits.map((h) => (
                 <li key={h.id}>
                   <button type="button" onClick={() => pick(h)} className="w-full text-left px-3 py-2.5 hover:bg-panel flex flex-col gap-0.5">
@@ -218,12 +231,7 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
             </ul>
           )}
           {searched && hits.length === 0 && (
-            <p className="text-xs text-muted">
-              Δεν βρέθηκε.{" "}
-              <button type="button" onClick={() => setManual(true)} className="text-gold underline">
-                Καταχωρήστε χειροκίνητα
-              </button>
-            </p>
+            <p className="text-xs text-muted">Δεν βρέθηκε κανείς στο μητρώο ΕΣΟ με αυτά τα στοιχεία.</p>
           )}
         </div>
       )}
@@ -242,10 +250,10 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
           ) : (
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-2">
-                <input className={inputCls} placeholder="Όνομα (λατινικά)" value={manualFirst} onChange={(e) => setManualFirst(e.target.value)} />
-                <input className={inputCls} placeholder="Επώνυμο (λατινικά)" value={manualLast} onChange={(e) => setManualLast(e.target.value)} />
+                <input className={`${inputCls} min-w-0`} placeholder="Όνομα (λατινικά)" value={manualFirst} onChange={(e) => setManualFirst(e.target.value)} />
+                <input className={`${inputCls} min-w-0`} placeholder="Επώνυμο (λατινικά)" value={manualLast} onChange={(e) => setManualLast(e.target.value)} />
               </div>
-              <input className={inputCls} type="date" placeholder="Ημερομηνία γέννησης" value={manualBirth} onChange={(e) => setManualBirth(e.target.value)} />
+              <input className={`${inputCls} min-w-0`} type="date" placeholder="Ημερομηνία γέννησης" value={manualBirth} onChange={(e) => setManualBirth(e.target.value)} />
             </div>
           )}
 
@@ -257,7 +265,7 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
                   type="button"
                   key={value}
                   onClick={() => setGender(value)}
-                  className={`border rounded-lg py-2.5 text-sm ${gender === value ? "bg-gold text-bg border-gold font-semibold" : "bg-panel border-cardBorder"}`}
+                  className={`min-w-0 border rounded-lg py-2.5 text-sm ${gender === value ? "bg-gold text-bg border-gold font-semibold" : "bg-panel border-cardBorder"}`}
                 >
                   {lbl}
                 </button>
@@ -266,14 +274,14 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={resetPicker} className="bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
+            <button type="button" onClick={resetPicker} className="min-w-0 bg-panel border border-cardBorder rounded-lg py-2.5 text-sm">
               Άκυρο
             </button>
             <button
               type="button"
               onClick={confirmAdd}
               disabled={!gender || (manual && (!manualFirst.trim() || !manualLast.trim()))}
-              className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm disabled:opacity-40"
+              className="min-w-0 bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm disabled:opacity-40"
             >
               Προσθήκη στη λίστα
             </button>
