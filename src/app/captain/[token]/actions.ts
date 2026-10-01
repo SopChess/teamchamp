@@ -606,3 +606,32 @@ export async function getCertificateUrl(token: string, teamId: string | undefine
     .createSignedUrl(row.attendance_certificate_path, 600);
   return data?.signedUrl ?? null;
 }
+
+/**
+ * Απόκρυψη/επανεμφάνιση ενός τουρνουά στο Portal — δική του επιλογή του
+ * υπευθύνου (επιβεβαιωμένο): αναστρέψιμη, ποτέ δεν χάνει δεδομένα, μόνο
+ * κρύβει/ξανααδείχνει το πλαίσιο εκείνου του τουρνουά. Λειτουργεί μόνο για
+ * υπεύθυνους με captain_accounts (νέο, πολλαπλών τουρνουά link) — τα παλιά
+ * links μίας ομάδας δεν έχουν τίποτα να κρύψουν (ένα μόνο τουρνουά).
+ */
+export async function setCompetitionHidden(token: string, competitionId: string, hidden: boolean): Promise<void> {
+  const supabase = createClient();
+  const { data: account } = await supabase.from("captain_accounts").select("id").eq("access_token", token).maybeSingle();
+  if (!account) throw new Error("Μη έγκυρο link πρόσβασης — η απόκρυψη τουρνουά δεν είναι διαθέσιμη σε παλιά links μίας ομάδας.");
+
+  if (hidden) {
+    const { error } = await supabase
+      .from("captain_hidden_competitions")
+      .upsert({ captain_account_id: account.id, competition_id: competitionId }, { onConflict: "captain_account_id,competition_id" });
+    if (error) throw new Error(`Αποτυχία απόκρυψης: ${error.message}`);
+  } else {
+    const { error } = await supabase
+      .from("captain_hidden_competitions")
+      .delete()
+      .eq("captain_account_id", account.id)
+      .eq("competition_id", competitionId);
+    if (error) throw new Error(`Αποτυχία επανεμφάνισης: ${error.message}`);
+  }
+
+  revalidatePath(`/captain/${token}`);
+}
