@@ -49,7 +49,6 @@ export default async function CaptainRoot({ params }: { params: { token: string 
   return (
     <div className="min-h-screen px-6 py-10 max-w-md mx-auto flex flex-col gap-6">
       <div>
-        <div className="font-serif font-bold text-gold tracking-wide text-sm">TEAM ALMA</div>
         <h1 className="font-serif font-bold text-2xl mt-2">Οι Ομάδες σας</h1>
         <p className="text-xs text-muted mt-1">Επιλέξτε ομάδα για διαχείριση.</p>
       </div>

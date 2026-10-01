@@ -4,7 +4,6 @@ import {
   removeRosterEntry,
   moveRosterEntry,
   saveCaptainInfo,
-  confirmRoster,
   submitRoundComposition,
   searchDirectory,
   searchDirectoryByNumber,
@@ -13,13 +12,13 @@ import {
   setEntryFeeMethod,
   getCertificateUrl,
 } from "./actions";
+import RosterEditor from "./RosterEditor";
 import { ENTRY_FEE_STATUS_LABEL, isEntryFeeStatus } from "@/lib/attendance/attendance";
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
 import { boardCoverageStatus } from "@/lib/rosterRules/basicRosterCheck";
 import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
 import CompositionForm from "./CompositionForm";
-import PlayerSearch from "./PlayerSearch";
 import Countdown from "./Countdown";
 import SavableForm from "@/components/SavableForm";
 import TabsShell, { type CaptainTab } from "./TabsShell";
@@ -101,9 +100,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
 
   const boundAddPlayer = addPlayerToRoster.bind(null, params.token, teamId);
   const boundRemove = removeRosterEntry.bind(null, params.token, teamId);
-  const boundMove = moveRosterEntry.bind(null, params.token, teamId);
   const boundCaptainInfo = saveCaptainInfo.bind(null, params.token, teamId);
-  const boundConfirm = confirmRoster.bind(null, params.token, teamId);
 
   // --- Ζωντανές κάρτες κάλυψης σκακιερών (Σχέδιο Α: καθοδηγεί, δεν μπλοκάρει) ---
   type EntryPlayer = { id: string; first_name: string; last_name: string; birth_date: string | null; rating_national?: number; rating_fide?: number; gender?: string };
@@ -159,17 +156,17 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
         <SavableForm action={boundCaptainInfo} successMessage="Τα στοιχεία του αρχηγού αποθηκεύτηκαν." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
           <div className="flex gap-2">
             <input
-              name="first_name"
-              required
-              defaultValue={captain?.first_name ?? ""}
-              placeholder="Όνομα (λατινικά)"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-            />
-            <input
               name="last_name"
               required
               defaultValue={captain?.last_name ?? ""}
               placeholder="Επώνυμο (λατινικά)"
+              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
+            />
+            <input
+              name="first_name"
+              required
+              defaultValue={captain?.first_name ?? ""}
+              placeholder="Όνομα (λατινικά)"
               className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
             />
           </div>
@@ -187,6 +184,10 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     </>
   );
 
+  const lockedReason = team.roster_locked
+    ? "Η βασική σύνθεση έχει κλειδωθεί από τη διοργάνωση."
+    : "Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.";
+
   const athletesTabContent = (
     <>
       {boardCoverage.length > 0 && (
@@ -195,118 +196,24 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
           <BoardCoverageCards boards={boardCoverage} />
         </div>
       )}
-
-      <div>
-        <div className="text-xs uppercase tracking-wide text-muted mb-2">
-          Βασική Σύνθεση{rules?.roster_size ? ` · έως ${rules.roster_size}` : ""}
-        </div>
-        <div className="flex flex-col gap-2">
-          {(entries ?? []).map((entry, i) => {
-            const player = playerOf(entry as unknown as { players: unknown });
-            return (
-              <div
-                key={entry.id}
-                className="flex items-center gap-3 bg-card border border-cardBorder rounded-lg px-3 py-2"
-              >
-                <div className="w-6 h-6 rounded-md bg-panel flex items-center justify-center text-xs font-bold text-gold flex-shrink-0">
-                  {entry.declared_order}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">
-                    {player?.last_name} {player?.first_name}
-                  </div>
-                  <div className="text-xs text-muted">
-                    {player?.rating_fide ?? player?.rating_national ?? "—"}
-                    {player?.gender ? ` · ${player.gender === "F" ? "Γ" : "Α"}` : ""}
-                  </div>
-                </div>
-                {editable && (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <SavableForm action={boundMove.bind(null, entry.id, "up")}>
-                      <button
-                        type="submit"
-                        disabled={i === 0}
-                        aria-label="Μετακίνηση πάνω"
-                        className="w-8 h-8 flex items-center justify-center text-muted disabled:opacity-30"
-                      >
-                        ↑
-                      </button>
-                    </SavableForm>
-                    <SavableForm action={boundMove.bind(null, entry.id, "down")}>
-                      <button
-                        type="submit"
-                        disabled={i === (entries?.length ?? 0) - 1}
-                        aria-label="Μετακίνηση κάτω"
-                        className="w-8 h-8 flex items-center justify-center text-muted disabled:opacity-30"
-                      >
-                        ↓
-                      </button>
-                    </SavableForm>
-                    <SavableForm action={boundRemove.bind(null, entry.id)} successMessage="Ο αθλητής αφαιρέθηκε.">
-                      <button
-                        type="submit"
-                        aria-label="Αφαίρεση"
-                        className="w-8 h-8 flex items-center justify-center text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </SavableForm>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {(entries ?? []).length === 0 && (
-            <p className="text-sm text-muted">Κανένας αθλητής ακόμα.</p>
-          )}
-        </div>
-      </div>
-
-      {editable && (
-        <PlayerSearch
-          search={searchDirectory.bind(null, params.token, teamId)}
-          searchByNumber={searchDirectoryByNumber.bind(null, params.token, teamId)}
-          add={addDirectoryPlayerToRoster.bind(null, params.token, teamId)}
-          available={!!process.env.SUPABASE_SERVICE_ROLE_KEY}
-        />
-      )}
-
-      {editable && (
-        <SavableForm action={boundAddPlayer} resetOnSuccess successMessage="Ο αθλητής προστέθηκε." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
-          <div className="text-xs uppercase tracking-wide text-muted">Χειροκίνητη προσθήκη (αν δεν βρίσκεται στο μητρώο ΕΣΟ) · λατινικά</div>
-          <div className="flex gap-2">
-            <input name="last_name" required placeholder="Επώνυμο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-            <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-          </div>
-          <div className="flex gap-2">
-            <input name="birth_date" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-            <select name="gender" required defaultValue="" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1">
-              <option value="" disabled>Φύλο *</option>
-              <option value="M">Άνδρας</option>
-              <option value="F">Γυναίκα</option>
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <input name="national_id" placeholder="ΑΜ ΕΣΟ" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-            <input name="fide_id" placeholder="FIDE ID" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-          </div>
-          <div className="flex gap-2">
-            <input name="rating_national" type="number" placeholder="Εθνικό ΕΛΟ" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-            <input name="rating_fide" type="number" placeholder="FIDE ΕΛΟ" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-          </div>
-          <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
-            Προσθήκη
-          </button>
-        </SavableForm>
-      )}
-
-      {editable && (
-        <SavableForm action={boundConfirm} successMessage="Η σύνθεση υποβλήθηκε.">
-          <button type="submit" className="w-full bg-gold text-bg font-semibold rounded-xl py-3 text-sm">
-            Υποβολή Σύνθεσης
-          </button>
-        </SavableForm>
-      )}
+      <RosterEditor
+        entries={(entries ?? []).map((entry) => ({
+          id: entry.id,
+          declared_order: entry.declared_order,
+          player: playerOf(entry as unknown as { players: unknown }),
+        }))}
+        rosterSize={rules?.roster_size ?? null}
+        editableByDeadline={editable}
+        lockedReason={lockedReason}
+        moveUp={async (entryId: string) => { "use server"; await moveRosterEntry(params.token, teamId, entryId, "up"); }}
+        moveDown={async (entryId: string) => { "use server"; await moveRosterEntry(params.token, teamId, entryId, "down"); }}
+        remove={boundRemove}
+        addManual={boundAddPlayer}
+        search={searchDirectory.bind(null, params.token, teamId)}
+        searchByNumber={searchDirectoryByNumber.bind(null, params.token, teamId)}
+        addDirectory={addDirectoryPlayerToRoster.bind(null, params.token, teamId)}
+        directoryAvailable={!!process.env.SUPABASE_SERVICE_ROLE_KEY}
+      />
     </>
   );
 
@@ -484,12 +391,15 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   return (
     <div className="min-h-screen px-6 py-10 max-w-sm md:max-w-xl mx-auto flex flex-col gap-6">
       <div>
-        <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
-        <div className="text-xs text-muted mb-1">Portal Αρχηγού</div>
         <h1 className="font-serif font-bold text-xl">
           {/* @ts-expect-error — Supabase join typing simplified */}
           {team.clubs_schools?.name ?? "Ομάδα"}
         </h1>
+        {(captain?.last_name || captain?.first_name) && (
+          <div className="text-xs text-muted mt-1">
+            Αρχηγός Ομάδας: {captain?.last_name} {captain?.first_name}
+          </div>
+        )}
       </div>
 
       <TabsShell tabs={tabs} />

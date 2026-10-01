@@ -17,9 +17,6 @@ export default async function AdminHome() {
   return (
     <div className="min-h-screen px-6 py-10 max-w-2xl mx-auto flex flex-col gap-10">
       <div>
-        <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">
-          TEAM ALMA
-        </div>
         <div className="flex items-center justify-between">
           <h1 className="font-serif font-bold text-2xl">Διοργανώσεις</h1>
           <div className="flex gap-4">

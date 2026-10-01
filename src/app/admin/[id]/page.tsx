@@ -312,7 +312,6 @@ export default async function CompetitionPage({ params }: { params: { id: string
   return (
     <div className="min-h-screen px-6 py-10 max-w-2xl mx-auto flex flex-col gap-6">
       <div>
-        <div className="font-serif font-bold text-gold tracking-wide text-sm mb-1">TEAM ALMA</div>
         <h1 className="font-serif font-bold text-2xl">{competition?.name ?? "Διοργάνωση"}</h1>
         <div className="flex gap-4 mt-2 flex-wrap">
           <Link href={`/admin/${params.id}/teams`} className="text-xs text-gold underline">

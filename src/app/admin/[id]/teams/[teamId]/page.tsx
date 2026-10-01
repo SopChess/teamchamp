@@ -63,8 +63,8 @@ export default async function AdminTeamDetailPage({ params }: { params: { id: st
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Στοιχεία Αρχηγού</div>
         <SavableForm action={boundCaptainInfo} successMessage="Τα στοιχεία αποθηκεύτηκαν." className="flex flex-col gap-2 bg-card border border-cardBorder rounded-xl p-4">
           <div className="flex gap-2">
-            <input name="first_name" defaultValue={captain?.first_name ?? ""} placeholder="Όνομα (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
             <input name="last_name" defaultValue={captain?.last_name ?? ""} placeholder="Επώνυμο (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
+            <input name="first_name" defaultValue={captain?.first_name ?? ""} placeholder="Όνομα (λατινικά)" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
           </div>
           <input name="phone" defaultValue={captain?.phone ?? ""} placeholder="Τηλέφωνο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />
           <input name="email" defaultValue={captain?.email ?? ""} placeholder="Email" type="email" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />

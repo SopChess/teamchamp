@@ -4,9 +4,35 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Λέει στον browser ότι η σελίδα είναι σκούρα — διορθώνει στοιχεία που ο browser
+     αποδίδει μόνος του (π.χ. το ανοιχτό μενού ενός <select>, scrollbars), που αλλιώς
+     πέφτουν σε φωτεινές προεπιλογές ασυνεπείς με το υπόλοιπο θέμα. */
+  color-scheme: dark;
+}
+
 body {
   background: #0b1220;
   color: #e9edf5;
+}
+
+/* Ρητό χρώμα κειμένου/φόντου σε όλα τα πεδία φόρμας — χωρίς αυτό, κάποιοι browsers
+   αγνοούν το χρώμα κειμένου της σελίδας μέσα σε input/select/textarea και πέφτουν σε
+   προεπιλογή που δεν ξεχωρίζει πάνω στο σκούρο φόντο μας. */
+input,
+select,
+textarea {
+  color: #e9edf5;
+  background-color: #0b1220;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #6b7690;
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: #8b93a7;
 }
 
 /* Απαλό pulsing glow — δείχνει "ζωντανή" κατάσταση (π.χ. ανοιχτές εγγραφές). */
