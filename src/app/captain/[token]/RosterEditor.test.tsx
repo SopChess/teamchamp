@@ -8,6 +8,15 @@ import userEvent from "@testing-library/user-event";
 // — χρειάζεται πραγματικό Next.js App Router context που δεν υπάρχει σε απλό jsdom render.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
+// Το RosterEditor καλεί πλέον ΑΠΕΥΘΕΙΑΣ τα server actions μετακίνησης (επιβεβαιωμένο, πιο
+// αξιόπιστο μοτίβο) αντί να τα παίρνει ως props — τα πλαστογραφούμε εδώ. vi.hoisted() χρειάζεται
+// γιατί το vi.mock() ανεβαίνει πριν από κανονικές δηλώσεις const στην κορυφή του αρχείου.
+const { moveRosterEntryUp, moveRosterEntryDown } = vi.hoisted(() => ({
+  moveRosterEntryUp: vi.fn(async () => undefined),
+  moveRosterEntryDown: vi.fn(async () => undefined),
+}));
+vi.mock("./actions", () => ({ moveRosterEntryUp, moveRosterEntryDown }));
+
 import RosterEditor from "./RosterEditor";
 
 afterEach(cleanup);
@@ -22,8 +31,8 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof RosterEditor>>
     entries,
     rosterSize: 6,
     editableByDeadline: true,
-    moveUp: vi.fn(async () => undefined),
-    moveDown: vi.fn(async () => undefined),
+    token: "tok1",
+    teamId: "team1",
     remove: vi.fn(async () => undefined),
     addManual: vi.fn(async () => undefined),
     search: vi.fn(async () => []),
@@ -70,7 +79,7 @@ describe("RosterEditor — εναλλαγή σε επεξεργασία", () => 
     await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
     await user.click(screen.getByText("Αποθήκευση"));
     expect(screen.queryByLabelText("Αφαίρεση")).not.toBeInTheDocument();
-    expect(props.moveUp).not.toHaveBeenCalled();
+    expect(moveRosterEntryUp).not.toHaveBeenCalled();
     expect(props.remove).not.toHaveBeenCalled();
   });
 
@@ -84,13 +93,22 @@ describe("RosterEditor — εναλλαγή σε επεξεργασία", () => 
     await waitFor(() => expect(props.remove).toHaveBeenCalledWith("e1"));
   });
 
-  it("κλικ στο ↑/↓ καλεί moveUp/moveDown με το σωστό entryId", async () => {
+  it("κλικ στο ↑/↓ καλεί ΑΠΕΥΘΕΙΑΣ το server action με token, teamId, entryId", async () => {
     const user = userEvent.setup();
     const props = baseProps();
     render(<RosterEditor {...props} />);
     await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
     await user.click(screen.getAllByLabelText("Μετακίνηση κάτω")[0]!);
-    await waitFor(() => expect(props.moveDown).toHaveBeenCalledWith("e1"));
+    await waitFor(() => expect(moveRosterEntryDown).toHaveBeenCalledWith("tok1", "team1", "e1"));
+  });
+
+  it("κλικ στο ↑ καλεί ΑΠΕΥΘΕΙΑΣ το server action μετακίνησης πάνω", async () => {
+    const user = userEvent.setup();
+    const props = baseProps();
+    render(<RosterEditor {...props} />);
+    await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
+    await user.click(screen.getAllByLabelText("Μετακίνηση πάνω")[1]!); // 2ος αθλητής, ↑ ενεργό
+    await waitFor(() => expect(moveRosterEntryUp).toHaveBeenCalledWith("tok1", "team1", "e2"));
   });
 });
 

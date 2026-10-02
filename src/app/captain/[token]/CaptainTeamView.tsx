@@ -2,8 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import {
   addPlayerToRoster,
   removeRosterEntry,
-  moveRosterEntryUp,
-  moveRosterEntryDown,
   saveCaptainInfo,
   submitRoundComposition,
   searchDirectory,
@@ -18,6 +16,7 @@ import { ENTRY_FEE_STATUS_LABEL, isEntryFeeStatus } from "@/lib/attendance/atten
 import type { RosterRules } from "@/lib/rosterRules/types";
 import { computeDefaultAssignment } from "@/lib/rosterRules/engine";
 import { boardCoverageStatus } from "@/lib/rosterRules/basicRosterCheck";
+import { referenceYearOf } from "@/lib/rosterRules/boardNotation";
 import { loadCaptainRound, loadRoster, loadRules } from "@/lib/rounds/server";
 import CompositionForm from "./CompositionForm";
 import Countdown from "./Countdown";
@@ -55,7 +54,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const { data: team } = await supabase
     .from("teams")
     .select(
-      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate, registration_deadline)"
+      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate, registration_deadline, starts_on)"
     )
     .eq("id", teamId)
     .maybeSingle();
@@ -118,12 +117,14 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     const p = playerOf(entry as unknown as { players: unknown });
     if (p) rosterPlayers[p.id] = p;
   }
+  const referenceYear = referenceYearOf(competitionFee?.starts_on ?? null);
   const boardCoverage =
     rules && entries
       ? boardCoverageStatus(
           rules,
           entries.map((e) => ({ player_id: playerOf(e as unknown as { players: unknown })?.id ?? "", declared_order: e.declared_order })),
-          rosterPlayers as unknown as Record<string, import("@/lib/rosterRules/types").Player>
+          rosterPlayers as unknown as Record<string, import("@/lib/rosterRules/types").Player>,
+          referenceYear
         )
       : [];
   const uncoveredCount = boardCoverage.filter((b) => !b.covered && b.label).length;
@@ -204,8 +205,8 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
         rosterSize={rules?.roster_size ?? null}
         editableByDeadline={editable}
         lockedReason={lockedReason}
-        moveUp={moveRosterEntryUp.bind(null, params.token, teamId)}
-        moveDown={moveRosterEntryDown.bind(null, params.token, teamId)}
+        token={params.token}
+        teamId={teamId}
         remove={boundRemove}
         addManual={boundAddPlayer}
         search={searchDirectory.bind(null, params.token, teamId)}
@@ -267,6 +268,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
               players={roundRoster.players}
               initial={initialAssignments}
               submit={submitRoundComposition.bind(null, params.token, teamId, round.roundId)}
+              referenceYear={referenceYear}
             />
           )}
           {!round.composition && round.window.open && !roundRules && (

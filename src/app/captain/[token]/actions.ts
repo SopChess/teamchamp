@@ -12,7 +12,7 @@ function revalidateCaptainPaths(token: string, teamId?: string) {
 }
 import { createClient } from "@/lib/supabase/server";
 import type { RosterRules, BoardAssignment } from "@/lib/rosterRules/types";
-import { validateComposition } from "@/lib/rosterRules/engine";
+import { validateComposition, satisfiesAnyBoard } from "@/lib/rosterRules/engine";
 import { submissionWindow } from "@/lib/rounds/window";
 import { loadRoster, loadRules } from "@/lib/rounds/server";
 import { cleanName } from "@/lib/transliterate";
@@ -129,9 +129,9 @@ export async function addAthleteToTeam(
 
   const { data: rules } = await supabase
     .from("roster_rules")
-    .select("roster_size")
+    .select("roster_size, board_rules")
     .eq("competition_id", team.competition_id)
-    .maybeSingle<Pick<RosterRules, "roster_size">>();
+    .maybeSingle<Pick<RosterRules, "roster_size" | "board_rules">>();
 
   const { count } = await supabase
     .from("roster_entries")
@@ -140,6 +140,27 @@ export async function addAthleteToTeam(
 
   if (rules?.roster_size != null && (count ?? 0) >= rules.roster_size) {
     return { ok: false, message: `Η βασική σύνθεση επιτρέπει το πολύ ${rules.roster_size} αθλητές.` };
+  }
+
+  // Κάθε προσθήκη ΠΡΕΠΕΙ να ταιριάζει σε τουλάχιστον μία σκακιέρα (επιβεβαιωμένο:
+  // αντιστρέφει το παλιότερο "Σχέδιο Α" που επέτρεπε κάθε προσθήκη χωρίς έλεγχο —
+  // διαφορετικά δεν έχει νόημα να προστεθεί ο αθλητής, δεν θα μπορεί να παίξει πουθενά).
+  if (rules?.board_rules && rules.board_rules.length > 0) {
+    const candidate = {
+      id: "",
+      first_name: fields.first_name,
+      last_name: fields.last_name,
+      birth_date: fields.birth_date ?? undefined,
+      gender: fields.gender,
+      rating_national: fields.rating_national ?? undefined,
+      rating_fide: fields.rating_fide ?? undefined,
+    } as Parameters<typeof satisfiesAnyBoard>[0];
+    if (!satisfiesAnyBoard(candidate, rules as RosterRules)) {
+      return {
+        ok: false,
+        message: "Ο αθλητής δεν πληροί τους όρους καμίας σκακιέρας της βασικής σύνθεσης — δεν μπορεί να προστεθεί.",
+      };
+    }
   }
 
   const duplicate = await findAthleteInCompetition(supabase, team.competition_id, fields);

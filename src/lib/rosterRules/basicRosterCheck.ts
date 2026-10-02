@@ -1,5 +1,6 @@
 import type { RosterRules, RosterEntry, Player, BoardConstraint } from "./types";
 import { computeDefaultAssignment } from "./engine";
+import { describeConstraintsShort } from "./boardNotation";
 
 /** Σύντομη, ανθρώπινη περιγραφή ενός όρου σκακιέρας — "Γυναίκα", "Από το 2014", "Βαθμός ≥ 1200". */
 export function describeConstraint(c: BoardConstraint): string {
@@ -76,6 +77,8 @@ export interface BoardCoverage {
   board: number;
   /** Κενό αν η σκακιέρα δεν έχει κανέναν όρο (οποιοσδήποτε αθλητής επιτρέπεται). */
   label: string;
+  /** Σύντομη σκακιστική σημειογραφία (επιβεβαιωμένο) — "U16", "F" κ.λπ. αντί για πλήρη πρόταση. */
+  shortLabel: string;
   covered: boolean;
 }
 
@@ -88,7 +91,8 @@ export interface BoardCoverage {
 export function boardCoverageStatus(
   rules: RosterRules,
   roster: RosterEntry[],
-  players: Record<string, Player>
+  players: Record<string, Player>,
+  referenceYear: number = new Date().getFullYear()
 ): BoardCoverage[] {
   const boardCount = rules.match_board_count ?? rules.board_rules.length;
   const assignment = computeDefaultAssignment(rules, roster, players);
@@ -96,6 +100,12 @@ export function boardCoverageStatus(
 
   return boardsInOrder(rules, boardCount).map((board) => {
     const rule = rules.board_rules.find((b) => b.board === board);
-    return { board, label: describeConstraints(rule?.constraints ?? []), covered: filledBoards.has(board) };
+    const constraints = rule?.constraints ?? [];
+    return {
+      board,
+      label: describeConstraints(constraints),
+      shortLabel: describeConstraintsShort(constraints, referenceYear),
+      covered: filledBoards.has(board),
+    };
   });
 }

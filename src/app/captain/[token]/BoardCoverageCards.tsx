@@ -22,7 +22,7 @@ export default function BoardCoverageCards({ boards }: { boards: BoardCoverage[]
             <span className="font-semibold">Σκακιέρα {b.board}</span>
             {b.covered && <span className="text-good text-xs">✓</span>}
           </div>
-          <div className="text-xs text-muted mt-0.5">{b.label || "Χωρίς όρο"}</div>
+          <div className="text-xs text-muted mt-0.5">{b.shortLabel || "Χωρίς όρο"}</div>
         </div>
       ))}
     </div>

@@ -4,6 +4,7 @@ import {
   computeDefaultAssignment,
   effectiveRating,
   satisfiesBoardRule,
+  satisfiesAnyBoard,
 } from "./engine";
 import type { Player, RosterEntry, RosterRules, BoardRule } from "./types";
 
@@ -12,6 +13,51 @@ import type { Player, RosterEntry, RosterRules, BoardRule } from "./types";
 // 1/1/Χ και μετά, "έως το έτος Χ" = μέχρι και 31/12/Χ (ολόκληρο το έτος Χ
 // μετράει και στις δύο περιπτώσεις). Δίπλα στον υπάρχοντα τύπο με ακριβή
 // ημερομηνία, όχι αντικατάσταση.
+describe("satisfiesAnyBoard — έλεγχος προσθήκης αθλητή (επιβεβαιωμένο: τουλάχιστον μία σκακιέρα)", () => {
+  const player = (p: Partial<Player>): Player =>
+    ({ id: "p", first_name: "N", last_name: "L", ...p } as Player);
+  const rules = (board_rules: BoardRule[]): RosterRules => ({
+    assignment_mode: "fixed_category",
+    roster_size: 6,
+    match_board_count: board_rules.length,
+    board_rules,
+  });
+
+  it("ταιριάζει αν πληροί τους όρους έστω και ΜΙΑΣ σκακιέρας, ακόμα κι αν αποτυγχάνει στις άλλες", () => {
+    const r = rules([
+      { board: 1, constraints: [{ type: "gender", value: "F" }] },
+      { board: 2, constraints: [{ type: "birth_year_from", value: 2014 }] },
+    ]);
+    // Άνδρας, γεννημένος 2010 — αποτυγχάνει στη σκακιέρα 1 (φύλο) αλλά ΔΕΝ χρειάζεται να
+    // πληροί τη 2 αφού δεν ταιριάζει εκεί ούτε αυτός· ελέγχουμε σενάριο που ταιριάζει στη 2.
+    expect(satisfiesAnyBoard(player({ gender: "M", birth_date: "2015-01-01" }), r)).toBe(true);
+  });
+
+  it("ΔΕΝ ταιριάζει σε καμία σκακιέρα → false", () => {
+    const r = rules([
+      { board: 1, constraints: [{ type: "gender", value: "F" }] },
+      { board: 2, constraints: [{ type: "birth_year_from", value: 2014 }] },
+    ]);
+    expect(satisfiesAnyBoard(player({ gender: "M", birth_date: "2005-01-01" }), r)).toBe(false);
+  });
+
+  it("σκακιέρα χωρίς κανέναν όρο → ικανοποιείται από τον καθένα", () => {
+    const r = rules([{ board: 1, constraints: [] }]);
+    expect(satisfiesAnyBoard(player({ gender: "M" }), r)).toBe(true);
+  });
+
+  it("καμία σκακιέρα ορισμένη ακόμα → δεν μπλοκάρει (τίποτα να ελέγξει)", () => {
+    expect(satisfiesAnyBoard(player({ gender: "M" }), rules([]))).toBe(true);
+  });
+
+  it("alternates_allowed παρακάμπτει τους υπόλοιπους όρους της ίδιας σκακιέρας, όπως και στο satisfiesBoardRule", () => {
+    const r = rules([
+      { board: 1, constraints: [{ type: "gender", value: "F" }, { type: "alternates_allowed", value: ["p"] }] },
+    ]);
+    expect(satisfiesAnyBoard(player({ id: "p", gender: "M" }), r)).toBe(true);
+  });
+});
+
 describe("birth_year_from / birth_year_until", () => {
   const player = (birth_date: string | undefined): Player =>
     ({ id: "p", first_name: "N", last_name: "L", birth_date } as Player);

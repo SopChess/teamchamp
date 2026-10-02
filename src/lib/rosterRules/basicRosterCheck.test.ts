@@ -76,7 +76,7 @@ describe("boardCoverageStatus — ζωντανές κάρτες σκακιερώ
   it("σκακιέρα χωρίς κανέναν αθλητή που να ταιριάζει → covered: false, με ετικέτα του όρου", () => {
     const status = boardCoverageStatus(rules, [], {});
     const board4 = status.find((s) => s.board === 4)!;
-    expect(board4).toEqual({ board: 4, label: "Γυναίκα", covered: false });
+    expect(board4).toEqual({ board: 4, label: "Γυναίκα", shortLabel: "F", covered: false });
   });
 
   it("μόλις προστεθεί αθλήτρια που καλύπτει τη σκακιέρα 4, γίνεται covered: true", () => {

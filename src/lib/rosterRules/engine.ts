@@ -79,6 +79,17 @@ export function satisfiesBoardRule(player: Player, rule: BoardRule): boolean {
 }
 
 /**
+ * Ένας αθλητής "ταιριάζει" στη βασική σύνθεση αν πληροί τους όρους τουλάχιστον
+ * ΜΙΑΣ σκακιέρας (επιβεβαιωμένο: αντιστρέφει το παλιότερο "Σχέδιο Α" που
+ * επέτρεπε κάθε προσθήκη χωρίς έλεγχο) — μια σκακιέρα χωρίς κανέναν όρο
+ * ικανοποιείται πάντα (κενή λίστα όρων), όπως και η κενή λίστα σκακιερών.
+ */
+export function satisfiesAnyBoard(player: Player, rules: RosterRules): boolean {
+  if (rules.board_rules.length === 0) return true;
+  return rules.board_rules.some((rule) => satisfiesBoardRule(player, rule));
+}
+
+/**
  * Validates one round's board assignments against a competition's
  * roster_rules and a team's declared roster. Deliberately generic — it must
  * never encode a specific competition's rules, only interpret them.

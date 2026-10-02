@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { satisfiesBoardRule, validateComposition } from "@/lib/rosterRules/engine";
+import { describeConstraintsShort } from "@/lib/rosterRules/boardNotation";
 import type { BoardAssignment, Player, RosterEntry, RosterRules } from "@/lib/rosterRules/types";
 import type { SubmitCompositionResult } from "./actions";
 
@@ -12,10 +13,19 @@ interface Props {
   players: Record<string, Player>;
   initial: BoardAssignment[];
   submit: (assignmentsJson: string) => Promise<SubmitCompositionResult>;
+  /** Έτος αναφοράς για τη σημειογραφία U16/F κ.λπ. (επιβεβαιωμένο: έτος έναρξης τουρνουά). */
+  referenceYear: number;
 }
 
 const nameOf = (p?: Player) => (p ? `${p.last_name} ${p.first_name}` : "—");
 const ratingOf = (p?: Player) => p?.rating_fide ?? p?.rating_national ?? null;
+const charsOf = (p?: Player) => {
+  if (!p) return "";
+  const parts: string[] = [];
+  if (p.gender) parts.push(p.gender);
+  if (p.birth_date) parts.push(`γεν. ${p.birth_date.slice(0, 4)}`);
+  return parts.join(" · ");
+};
 
 /**
  * Προετοιμασία σύνθεσης γύρου.
@@ -25,7 +35,7 @@ const ratingOf = (p?: Player) => p?.rating_fide ?? p?.rating_national ?? null;
  *  - fixed_category: επιλέγετε αθλητή για κάθε σκακιέρα (μόνο επιλέξιμοι).
  * Ο έλεγχος τρέχει ζωντανά με τον ΙΔΙΟ κώδικα που ξανατρέχει ο server στην υποβολή.
  */
-export default function CompositionForm({ rules, roster, players, initial, submit }: Props) {
+export default function CompositionForm({ rules, roster, players, initial, submit, referenceYear }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +161,11 @@ export default function CompositionForm({ rules, roster, players, initial, submi
       {(isFixed ? boards : exemptBoards).map((b) => (
         <div key={b}>
           <div className="text-xs uppercase tracking-wide text-muted mb-2">
-            {isFixed ? `Σκακιέρα ${b}` : `Σκακιέρα ${b} · ειδικός όρος`}
+            Σκακιέρα {b}
+            {(() => {
+              const short = describeConstraintsShort(ruleFor(b)?.constraints ?? [], referenceYear);
+              return short ? ` · ${short}` : !isFixed ? " · ειδικός όρος" : "";
+            })()}
           </div>
           <select
             value={choice[b] ?? ""}
@@ -164,6 +178,7 @@ export default function CompositionForm({ rules, roster, players, initial, submi
               <option key={r.player_id} value={r.player_id}>
                 {nameOf(players[r.player_id])}
                 {ratingOf(players[r.player_id]) ? ` · ${ratingOf(players[r.player_id])}` : ""}
+                {charsOf(players[r.player_id]) ? ` · ${charsOf(players[r.player_id])}` : ""}
               </option>
             ))}
           </select>
@@ -177,7 +192,13 @@ export default function CompositionForm({ rules, roster, players, initial, submi
             const a = assignments.find((x) => x.board === b);
             return (
               <div key={b} className="flex items-center justify-between py-2.5 border-b border-cardBorder last:border-b-0">
-                <span className="text-sm text-muted">Σκακιέρα {b}</span>
+                <span className="text-sm text-muted">
+                  Σκακιέρα {b}
+                  {(() => {
+                    const short = describeConstraintsShort(ruleFor(b)?.constraints ?? [], referenceYear);
+                    return short ? ` · ${short}` : "";
+                  })()}
+                </span>
                 <span className="text-sm font-semibold">{a ? nameOf(players[a.player_id]) : "—"}</span>
               </div>
             );

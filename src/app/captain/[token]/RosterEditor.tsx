@@ -5,6 +5,7 @@ import SavableForm from "@/components/SavableForm";
 import PlayerSearch from "./PlayerSearch";
 import type { DirectoryHit } from "@/lib/players/directory";
 import type { AddAthleteResult } from "./actions";
+import { moveRosterEntryUp, moveRosterEntryDown } from "./actions";
 
 interface EntryPlayer {
   last_name?: string;
@@ -12,6 +13,7 @@ interface EntryPlayer {
   rating_national?: number;
   rating_fide?: number;
   gender?: string;
+  birth_date?: string | null;
 }
 
 export interface RosterEditorEntry {
@@ -28,8 +30,11 @@ interface Props {
   editableByDeadline: boolean;
   /** Μήνυμα που εξηγεί ΓΙΑΤΙ είναι κλειδωμένο (προθεσμία ή ρητό κλείδωμα από τη διοργάνωση). */
   lockedReason?: string;
-  moveUp: (entryId: string) => Promise<void>;
-  moveDown: (entryId: string) => Promise<void>;
+  /** token/teamId της ομάδας — το RosterEditor καλεί ΑΠΕΥΘΕΙΑΣ τα server actions
+   * μετακίνησης (επιβεβαιωμένο: πιο αξιόπιστο μοτίβο από bound function περασμένη
+   * ως prop από parent — δεν έμεινε καμία αμφιβολία σειριοποίησης). */
+  token: string;
+  teamId: string | undefined;
   remove: (entryId: string) => Promise<void>;
   addManual: (formData: FormData) => Promise<void>;
   search: (epitheto: string, onoma: string) => Promise<DirectoryHit[]>;
@@ -48,7 +53,7 @@ interface Props {
  * μόνιμο κλείδωμα "Υποβολή Σύνθεσης").
  */
 export default function RosterEditor({
-  entries, rosterSize, editableByDeadline, lockedReason, moveUp, moveDown, remove, addManual,
+  entries, rosterSize, editableByDeadline, lockedReason, token, teamId, remove, addManual,
   search, searchByNumber, addDirectory, directoryAvailable,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
@@ -96,14 +101,15 @@ export default function RosterEditor({
               <div className="text-xs text-muted">
                 {entry.player?.rating_fide ?? entry.player?.rating_national ?? "—"}
                 {entry.player?.gender ? ` · ${entry.player.gender === "F" ? "Γ" : "Α"}` : ""}
+                {entry.player?.birth_date ? ` · γεν. ${entry.player.birth_date.slice(0, 4)}` : ""}
               </div>
             </div>
             {editing && (
               <div className="flex items-center gap-1 flex-shrink-0">
-                <SavableForm action={() => moveUp(entry.id)}>
+                <SavableForm action={() => moveRosterEntryUp(token, teamId, entry.id)}>
                   <button type="submit" disabled={i === 0} aria-label="Μετακίνηση πάνω" className="w-8 h-8 flex items-center justify-center text-muted disabled:opacity-30">↑</button>
                 </SavableForm>
-                <SavableForm action={() => moveDown(entry.id)}>
+                <SavableForm action={() => moveRosterEntryDown(token, teamId, entry.id)}>
                   <button type="submit" disabled={i === entries.length - 1} aria-label="Μετακίνηση κάτω" className="w-8 h-8 flex items-center justify-center text-muted disabled:opacity-30">↓</button>
                 </SavableForm>
                 <SavableForm action={() => remove(entry.id)} successMessage="Ο αθλητής αφαιρέθηκε.">
