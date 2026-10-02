@@ -3,6 +3,8 @@
 import { useState } from "react";
 import SavableForm from "@/components/SavableForm";
 import { AUDIENCE_LABELS } from "@/lib/teams/teams";
+import { TOURNAMENT_CATEGORIES, CATEGORY_LABEL } from "@/lib/competitions/category";
+import { TOURNAMENT_FORMATS, FORMAT_LABEL } from "@/lib/competitions/format";
 
 /**
  * Δημιουργία τουρνουά πίσω από κουμπί "+ Νέο Τουρνουά" (επιβεβαιωμένο) — η φόρμα δεν
@@ -38,20 +40,52 @@ export default function CreateTournamentForm({ action }: { action: (formData: Fo
         placeholder="π.χ. 18ο Πανελλήνιο Ομαδικό Παίδων-Κορασίδων"
         className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
       />
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Διοργανώτρια αρχή
+        <input
+          name="organizer"
+          placeholder="π.χ. Σκακιστικός Όμιλος Πολίχνης"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Κατηγορία διοργάνωσης
+        <select name="category" defaultValue="other" className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
+          {TOURNAMENT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
+          ))}
+        </select>
+      </label>
       <div className="flex gap-3">
-        <input
-          name="format"
-          defaultValue="swiss"
-          placeholder="format"
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-        />
-        <input
-          name="rounds_count"
-          type="number"
-          placeholder="γύροι"
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm w-24"
-        />
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
+          Σύστημα αγώνων
+          <select name="format" defaultValue="swiss" className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
+            {TOURNAMENT_FORMATS.map((f) => (
+              <option key={f} value={f}>{FORMAT_LABEL[f]}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-muted">
+          Γύροι
+          <input
+            name="rounds_count"
+            type="number"
+            placeholder="γύροι"
+            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm w-20"
+          />
+        </label>
       </div>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Αριθμός σκακιερών ανά συνάντηση
+        <input
+          name="match_board_count"
+          type="number"
+          min={1}
+          placeholder="π.χ. 4"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+        />
+        <span className="text-xs text-muted">Μπορεί να οριστεί/αλλάξει και αργότερα στους Κανόνες Σύνθεσης.</span>
+      </label>
       <input
         name="venue"
         placeholder="Χώρος αγώνων"

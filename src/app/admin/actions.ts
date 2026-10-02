@@ -7,14 +7,47 @@ import type { RosterRules } from "@/lib/rosterRules/types";
 import { TIEBREAK_LABELS, type TiebreakKey } from "@/lib/standings/standings";
 import type { AudienceType } from "@/lib/teams/teams";
 import { isValidTournamentStatus, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
+import { isTournamentCategory, type TournamentCategory } from "@/lib/competitions/category";
+import { isTournamentFormat, type TournamentFormat } from "@/lib/competitions/format";
 
 const AUDIENCE_TYPES: AudienceType[] = ["school", "eso_club", "free_team"];
+
+/**
+ * Ο αριθμός σκακιερών (match_board_count) ζει στο roster_rules, όχι στο competitions —
+ * επιβεβαιωμένο: εμφανίζεται πλέον και στα βασικά στοιχεία διοργάνωσης για ευκολία, αλλά
+ * αποθηκεύεται πάντα εκεί. Αν δεν υπάρχει ακόμα γραμμή roster_rules (ο admin δεν έχει
+ * επισκεφτεί ακόμα τους Κανόνες Σύνθεσης), δημιουργείται μία ελάχιστη, ασφαλής — με
+ * λογική προεπιλογή assignment_mode που ο admin μπορεί να αλλάξει αργότερα εκεί.
+ */
+async function upsertMatchBoardCount(
+  supabase: ReturnType<typeof createClient>,
+  competitionId: string,
+  matchBoardCount: number | null
+): Promise<void> {
+  if (matchBoardCount == null) return;
+  const { data: existing } = await supabase
+    .from("roster_rules")
+    .select("competition_id")
+    .eq("competition_id", competitionId)
+    .maybeSingle();
+  if (existing) {
+    await supabase.from("roster_rules").update({ match_board_count: matchBoardCount }).eq("competition_id", competitionId);
+  } else {
+    await supabase.from("roster_rules").insert({
+      competition_id: competitionId,
+      assignment_mode: "strength_order",
+      match_board_count: matchBoardCount,
+      board_rules: [],
+    });
+  }
+}
 
 export async function createCompetition(formData: FormData) {
   const supabase = createClient();
 
   const name = String(formData.get("name") ?? "").trim();
-  const format = String(formData.get("format") ?? "swiss");
+  const formatRaw = String(formData.get("format") ?? "swiss");
+  const format: TournamentFormat = isTournamentFormat(formatRaw) ? formatRaw : "swiss";
   const roundsCount = Number(formData.get("rounds_count") ?? 0) || null;
   const startsOn = String(formData.get("starts_on") ?? "") || null;
   const endsOn = String(formData.get("ends_on") ?? "") || null;
@@ -38,6 +71,11 @@ export async function createCompetition(formData: FormData) {
   const statusRaw = String(formData.get("status") ?? "open");
   const status: TournamentStatus = isValidTournamentStatus(statusRaw) ? statusRaw : "open";
   const requiresCertificate = formData.get("requires_certificate") === "on";
+  const organizer = String(formData.get("organizer") ?? "").trim() || null;
+  const categoryRaw = String(formData.get("category") ?? "other");
+  const category: TournamentCategory = isTournamentCategory(categoryRaw) ? categoryRaw : "other";
+  const matchBoardCountRaw = String(formData.get("match_board_count") ?? "").trim();
+  const matchBoardCount = matchBoardCountRaw && Number.isFinite(Number(matchBoardCountRaw)) ? Number(matchBoardCountRaw) : null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -64,6 +102,8 @@ export async function createCompetition(formData: FormData) {
       entry_fee_deadline: entryFeeDeadline,
       status,
       requires_certificate: requiresCertificate,
+      organizer,
+      category,
     })
     .select("id")
     .single();
@@ -71,6 +111,8 @@ export async function createCompetition(formData: FormData) {
   if (error) {
     throw new Error(`Αποτυχία δημιουργίας διοργάνωσης: ${error.message}`);
   }
+
+  await upsertMatchBoardCount(supabase, data.id, matchBoardCount);
 
   revalidatePath("/admin");
   redirect(`/admin/${data.id}`);
@@ -81,6 +123,9 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const supabase = createClient();
 
   const name = String(formData.get("name") ?? "").trim();
+  const formatRaw = String(formData.get("format") ?? "swiss");
+  const format: TournamentFormat = isTournamentFormat(formatRaw) ? formatRaw : "swiss";
+  const roundsCount = Number(formData.get("rounds_count") ?? 0) || null;
   const startsOn = String(formData.get("starts_on") ?? "") || null;
   const endsOn = String(formData.get("ends_on") ?? "") || null;
   const venue = String(formData.get("venue") ?? "").trim() || null;
@@ -103,6 +148,11 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const statusRaw = String(formData.get("status") ?? "open");
   const status: TournamentStatus = isValidTournamentStatus(statusRaw) ? statusRaw : "open";
   const requiresCertificate = formData.get("requires_certificate") === "on";
+  const organizer = String(formData.get("organizer") ?? "").trim() || null;
+  const categoryRaw = String(formData.get("category") ?? "other");
+  const category: TournamentCategory = isTournamentCategory(categoryRaw) ? categoryRaw : "other";
+  const matchBoardCountRaw = String(formData.get("match_board_count") ?? "").trim();
+  const matchBoardCount = matchBoardCountRaw && Number.isFinite(Number(matchBoardCountRaw)) ? Number(matchBoardCountRaw) : null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -112,6 +162,8 @@ export async function updateCompetition(competitionId: string, formData: FormDat
     .from("competitions")
     .update({
       name,
+      format,
+      rounds_count: roundsCount,
       starts_on: startsOn,
       ends_on: endsOn,
       venue,
@@ -127,12 +179,16 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       entry_fee_deadline: entryFeeDeadline,
       status,
       requires_certificate: requiresCertificate,
+      organizer,
+      category,
     })
     .eq("id", competitionId);
 
   if (error) {
     throw new Error(`Αποτυχία ενημέρωσης διοργάνωσης: ${error.message}`);
   }
+
+  await upsertMatchBoardCount(supabase, competitionId, matchBoardCount);
 
   revalidatePath(`/admin/${competitionId}`);
 }

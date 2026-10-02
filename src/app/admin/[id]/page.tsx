@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { saveRosterRules, saveScoringRules, updateCompetition } from "../actions";
 import { AUDIENCE_LABELS } from "@/lib/teams/teams";
 import { TOURNAMENT_STATUS_LABEL } from "@/lib/competitions/tournamentStatus";
+import { TOURNAMENT_CATEGORIES, CATEGORY_LABEL } from "@/lib/competitions/category";
+import { TOURNAMENT_FORMATS, FORMAT_LABEL } from "@/lib/competitions/format";
 import RosterRulesBuilder from "../RosterRulesBuilder";
 import { TIEBREAK_LABELS, DEFAULT_TIEBREAKS } from "@/lib/standings/standings";
 import type { RosterRules } from "@/lib/rosterRules/types";
@@ -17,7 +19,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, time_control, registration_deadline, entry_fee_amount, entry_fee_note, entry_fee_deadline, status, requires_certificate")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, time_control, registration_deadline, entry_fee_amount, entry_fee_note, entry_fee_deadline, status, requires_certificate, organizer, category")
     .eq("id", params.id)
     .single();
 
@@ -51,6 +53,61 @@ export default async function CompetitionPage({ params }: { params: { id: string
           defaultValue={competition?.name ?? ""}
           className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Διοργανώτρια αρχή
+        <input
+          name="organizer"
+          defaultValue={competition?.organizer ?? ""}
+          placeholder="π.χ. Σκακιστικός Όμιλος Πολίχνης"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Κατηγορία διοργάνωσης
+        <select
+          name="category"
+          defaultValue={competition?.category ?? "other"}
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        >
+          {TOURNAMENT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
+          ))}
+        </select>
+      </label>
+      <div className="flex gap-3">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
+          Σύστημα αγώνων
+          <select
+            name="format"
+            defaultValue={competition?.format ?? "swiss"}
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          >
+            {TOURNAMENT_FORMATS.map((f) => (
+              <option key={f} value={f}>{FORMAT_LABEL[f]}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-muted">
+          Γύροι
+          <input
+            name="rounds_count"
+            type="number"
+            defaultValue={competition?.rounds_count ?? ""}
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+      </div>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Αριθμός σκακιερών ανά συνάντηση
+        <input
+          name="match_board_count"
+          type="number"
+          min={1}
+          defaultValue={rosterRules?.match_board_count ?? ""}
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+        <span className="text-xs text-muted">Το ίδιο πεδίο με τους Κανόνες Σύνθεσης παρακάτω.</span>
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted">
         Κατάσταση
