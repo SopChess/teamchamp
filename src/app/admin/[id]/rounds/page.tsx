@@ -117,16 +117,26 @@ export default async function RoundsPage({ params }: { params: { id: string } })
           const isPending = pendingRoundIds.has(r.id);
           return (
             <div key={r.id} className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div className="font-semibold">Γύρος {r.round_number}</div>
-                {isPending && (
-                  <Link
-                    href={`/admin/${params.id}/rounds/${r.id}/resolve`}
-                    className="text-xs bg-panel border border-cardBorder rounded-full px-3 py-1 text-gold"
-                  >
-                    Εκκρεμεί αντιστοίχιση
-                  </Link>
-                )}
+                <div className="flex items-center gap-2">
+                  {roundPairings.length > 0 && (
+                    <Link
+                      href={`/admin/${params.id}/rounds/${r.id}`}
+                      className="text-xs bg-panel border border-cardBorder rounded-full px-3 py-1 text-gold"
+                    >
+                      Διαχείριση Αγωνιστικής
+                    </Link>
+                  )}
+                  {isPending && (
+                    <Link
+                      href={`/admin/${params.id}/rounds/${r.id}/resolve`}
+                      className="text-xs bg-panel border border-cardBorder rounded-full px-3 py-1 text-gold"
+                    >
+                      Εκκρεμεί αντιστοίχιση
+                    </Link>
+                  )}
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 {roundPairings.map((p) => (

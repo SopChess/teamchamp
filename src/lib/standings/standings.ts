@@ -6,6 +6,15 @@
  */
 
 export type BoardResult = "1-0" | "0-1" | "1/2-1/2" | "forfeit_a" | "forfeit_b";
+
+/** Ευανάγνωστη ετικέτα ανά αποτέλεσμα σκακιέρας — κοινή σε referee/r, admin κεντρικό πίνακα κ.λπ. */
+export const RESULT_LABEL: Record<BoardResult, string> = {
+  "1-0": "1 – 0",
+  "0-1": "0 – 1",
+  "1/2-1/2": "½ – ½",
+  forfeit_a: "Α.Α. (απουσία ομάδας Α)",
+  forfeit_b: "Α.Α. (απουσία ομάδας Β)",
+};
 export const BOARD_RESULTS: BoardResult[] = ["1-0", "0-1", "1/2-1/2", "forfeit_a", "forfeit_b"];
 
 export type TiebreakKey =

@@ -2,18 +2,11 @@ import { getCurrentAccess, canScoreCompetition } from "@/lib/access.server";
 import { resolveScan } from "@/lib/rounds/scan";
 import { recordBoardResult, getResultHistory } from "./actions";
 import type { BoardResult } from "@/lib/standings/standings";
+import { RESULT_LABEL } from "@/lib/standings/standings";
 import SavableForm from "@/components/SavableForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const RESULT_LABEL: Record<BoardResult, string> = {
-  "1-0": "1 – 0",
-  "0-1": "0 – 1",
-  "1/2-1/2": "½ – ½",
-  forfeit_a: "Α.Α. (απουσία ομάδας Α)",
-  forfeit_b: "Α.Α. (απουσία ομάδας Β)",
-};
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
