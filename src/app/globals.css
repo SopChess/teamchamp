@@ -63,12 +63,15 @@ textarea:disabled {
    σαφές σε ποιο μέρος της εφαρμογής βρίσκεται κανείς). Βαθύτερο, πιο σκούρο
    φόντο και ψυχρό γκρι-μπλε αντί για ζεστό χρυσό στο μοτίβο. */
 .chess-bg-admin {
-  background-color: #090E1A;
+  /* Επιβεβαιωμένο: η πρώτη προσπάθεια ήταν πρακτικά αόρατη (πολύ κοντά στο navy του
+     Portal, πάρα πολύ χαμηλή διαφάνεια στο μοτίβο) — τώρα πραγματικά ξεχωρίζει με μια
+     ματιά: πιο σκούρο, καθαρά μπλε-γκρι (όχι navy/χρυσό) φόντο, με πολύ πιο έντονο μοτίβο. */
+  background-color: #0A1420;
   background-image:
-    linear-gradient(45deg, rgba(120, 150, 190, 0.045) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(120, 150, 190, 0.045) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(120, 150, 190, 0.045) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(120, 150, 190, 0.045) 75%);
+    linear-gradient(45deg, rgba(90, 140, 210, 0.11) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(90, 140, 210, 0.11) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(90, 140, 210, 0.11) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(90, 140, 210, 0.11) 75%);
   background-size: 64px 64px;
   background-position: 0 0, 0 32px, 32px -32px, -32px 0px;
   background-attachment: fixed;

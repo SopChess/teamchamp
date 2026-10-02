@@ -105,14 +105,14 @@ export default async function MeetingsPage({ params }: { params: { id: string } 
       {rules?.match_board_count && (
         <SavableForm action={boundCreate} successMessage="Οι συναντήσεις δημιουργήθηκαν." className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
           <div className="text-xs uppercase tracking-wide text-muted">Δημιουργία Συναντήσεων</div>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-sm text-muted">
             Πόσες συναντήσεις θέλετε να προσθέσετε;
             <input
               name="count"
               type="number"
               required
               placeholder="π.χ. 5"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+              className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
             />
           </label>
           <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">

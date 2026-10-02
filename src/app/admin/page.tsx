@@ -85,7 +85,7 @@ export default async function AdminHome() {
           <input name="starts_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
           <input name="ends_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
         </div>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Σε ποιους απευθύνεται
           <select name="audience_type" defaultValue="eso_club" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
             {(Object.entries(AUDIENCE_LABELS) as [string, string][]).map(([value, label]) => (
@@ -93,7 +93,7 @@ export default async function AdminHome() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
           <input
             name="max_teams_per_club"
@@ -103,7 +103,7 @@ export default async function AdminHome() {
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Προκήρυξη (link, π.χ. Google Drive)
           <input
             name="announcement_url"
@@ -112,7 +112,7 @@ export default async function AdminHome() {
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Χώρος αγώνων — link Google Maps
           <input
             name="venue_maps_url"
@@ -121,7 +121,7 @@ export default async function AdminHome() {
             className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Προθεσμία εγγραφών
           <input
             name="registration_deadline"
@@ -130,7 +130,7 @@ export default async function AdminHome() {
           />
         </label>
         <div className="flex gap-3">
-          <label className="flex flex-col gap-1 text-sm flex-1">
+          <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
             Παράβολο συμμετοχής (€)
             <input
               name="entry_fee_amount"
@@ -141,7 +141,7 @@ export default async function AdminHome() {
               className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm flex-1">
+          <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
             Σημείωση παραβόλου
             <input
               name="entry_fee_note"

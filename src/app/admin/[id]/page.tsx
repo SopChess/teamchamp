@@ -43,21 +43,21 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const detailsTabContent = (
     <SavableForm action={boundUpdateCompetition} successMessage="Τα στοιχεία αποθηκεύτηκαν." className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Όνομα
         <input
           name="name"
           required
           defaultValue={competition?.name ?? ""}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Κατάσταση
         <select
           name="status"
           defaultValue={competition?.status ?? "open"}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         >
           {(Object.entries(TOURNAMENT_STATUS_LABEL) as [string, string][]).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
@@ -69,30 +69,30 @@ export default async function CompetitionPage({ params }: { params: { id: string
           της προθεσμίας, δώστε και νέα (μελλοντική) προθεσμία παρακάτω.
         </span>
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Χώρος αγώνων
         <input
           name="venue"
           defaultValue={competition?.venue ?? ""}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
       <div className="flex gap-3">
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Έναρξη
-          <input name="starts_on" type="date" defaultValue={competition?.starts_on ?? ""} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="starts_on" type="date" defaultValue={competition?.starts_on ?? ""} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Λήξη
-          <input name="ends_on" type="date" defaultValue={competition?.ends_on ?? ""} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="ends_on" type="date" defaultValue={competition?.ends_on ?? ""} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Σε ποιους απευθύνεται
         <select
           name="audience_type"
           defaultValue={competition?.audience_type ?? "eso_club"}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         >
           {(Object.entries(AUDIENCE_LABELS) as [string, string][]).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
@@ -102,54 +102,54 @@ export default async function CompetitionPage({ params }: { params: { id: string
           Αλλαγή εδώ δεν επηρεάζει ομάδες που έχουν ήδη δηλωθεί.
         </span>
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
         <input
           name="max_teams_per_club"
           type="number"
           min={1}
           defaultValue={competition?.max_teams_per_club ?? 1}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Προκήρυξη (link, π.χ. Google Drive)
         <input
           name="announcement_url"
           type="url"
           defaultValue={competition?.announcement_url ?? ""}
           placeholder="https://drive.google.com/..."
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Χώρος αγώνων — link Google Maps
         <input
           name="venue_maps_url"
           type="url"
           defaultValue={competition?.venue_maps_url ?? ""}
           placeholder="https://maps.app.goo.gl/..."
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Link αποτελεσμάτων (chess-results.com)
         <input
           name="chess_results_url"
           type="url"
           defaultValue={competition?.chess_results_url ?? ""}
           placeholder="https://chess-results.com/tnr..."
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
         <span className="text-xs text-muted">Προαιρετικό — εμφανίζεται στη δημόσια σελίδα του τουρνουά, αν δοθεί.</span>
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Προθεσμία εγγραφών
         <input
           name="registration_deadline"
           type="datetime-local"
           defaultValue={competition?.registration_deadline ? new Date(competition.registration_deadline).toISOString().slice(0, 16) : ""}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
       <label className="flex items-center gap-2 text-sm">
@@ -157,7 +157,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
         Απαιτείται βεβαίωση φοίτησης
       </label>
       <div className="flex gap-3">
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Παράβολο συμμετοχής (€)
           <input
             name="entry_fee_amount"
@@ -166,16 +166,16 @@ export default async function CompetitionPage({ params }: { params: { id: string
             min={0}
             defaultValue={competition?.entry_fee_amount ?? ""}
             placeholder="κενό = χωρίς παράβολο"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Σημείωση παραβόλου
           <input
             name="entry_fee_note"
             defaultValue={competition?.entry_fee_note ?? ""}
             placeholder="π.χ. ανά αθλητή"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
       </div>
@@ -191,12 +191,12 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const rulesTabContent = (
     <SavableForm action={boundSave} successMessage="Οι κανόνες σύνθεσης αποθηκεύτηκαν." className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Τρόπος ανάθεσης σκακιέρας
         <select
           name="assignment_mode"
           defaultValue={rosterRules?.assignment_mode ?? "strength_order"}
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         >
           <option value="strength_order">strength_order — δηλωμένη σειρά με εξαιρέσεις</option>
           <option value="fixed_category">fixed_category — σταθερή κατηγορία ανά board</option>
@@ -204,33 +204,33 @@ export default async function CompetitionPage({ params }: { params: { id: string
       </label>
 
       <div className="flex gap-3">
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Αριθμός αθλητών Βασικής Σύνθεσης
           <input
             name="roster_size"
             type="number"
             defaultValue={rosterRules?.roster_size ?? ""}
             placeholder="π.χ. 6 (κενό = απεριόριστο)"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Σκακιέρες ανά αγώνα
           <input
             name="match_board_count"
             type="number"
             defaultValue={rosterRules?.match_board_count ?? ""}
             placeholder="π.χ. 4"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm flex-1">
+        <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
           Αναπληρωματικοί
           <input
             name="reserve_count"
             type="number"
             defaultValue={rosterRules?.reserve_count ?? ""}
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2"
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
           />
         </label>
       </div>
@@ -255,33 +255,33 @@ export default async function CompetitionPage({ params }: { params: { id: string
   const scoringTabContent = (
     <SavableForm action={boundScoring} successMessage="Η βαθμολογία αποθηκεύτηκε." className="flex flex-col gap-4 bg-card border border-cardBorder rounded-xl p-5">
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Νίκη (βαθμοί)
-          <input name="win_points" defaultValue={scoring?.win_points ?? 2} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="win_points" defaultValue={scoring?.win_points ?? 2} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Ισοπαλία
-          <input name="draw_points" defaultValue={scoring?.draw_points ?? 1} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="draw_points" defaultValue={scoring?.draw_points ?? 1} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           Ήττα
-          <input name="loss_points" defaultValue={scoring?.loss_points ?? 0} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="loss_points" defaultValue={scoring?.loss_points ?? 0} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Ποινή ήττας χωρίς αγώνα (βαθμοί που αφαιρούνται, 0 = καμία)
-        <input name="forfeit_loss_penalty" defaultValue={scoring?.forfeit_loss_penalty ?? 0} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+        <input name="forfeit_loss_penalty" defaultValue={scoring?.forfeit_loss_penalty ?? 0} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           BYE: βαθμοί συνάντησης
-          <input name="bye_match_points" defaultValue={scoring?.bye_match_points ?? 2} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="bye_match_points" defaultValue={scoring?.bye_match_points ?? 2} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-muted">
           BYE: πόντοι σκακιερών (κενό = μισοί)
-          <input name="bye_board_points" defaultValue={scoring?.bye_board_points ?? ""} className="bg-panel border border-cardBorder rounded-lg px-3 py-2" />
+          <input name="bye_board_points" defaultValue={scoring?.bye_board_points ?? ""} className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2" />
         </label>
       </div>
 
