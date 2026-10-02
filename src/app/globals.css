@@ -48,21 +48,24 @@ body {
 
 /* Ρητό χρώμα κειμένου/φόντου σε όλα τα πεδία φόρμας — χωρίς αυτό, κάποιοι browsers
    αγνοούν το χρώμα κειμένου της σελίδας μέσα σε input/select/textarea και πέφτουν σε
-   προεπιλογή που δεν ξεχωρίζει πάνω στο σκούρο φόντο μας. */
+   προεπιλογή που δεν ξεχωρίζει πάνω στο φόντο μας. ΕΠΙΒΕΒΑΙΩΜΕΝΟ BUG FIX: αυτά ήταν
+   ΣΤΑΘΕΡΑ χρώματα (πάντα σκούρα), όχι συνδεδεμένα με τις μεταβλητές θέματος — σε
+   ανοιχτόχρωμο θέμα το κείμενο μέσα στα πεδία γινόταν σχεδόν αόρατο. Τώρα ακολουθούν
+   πάντα το τρέχον θέμα, σκούρο ή ανοιχτόχρωμο. */
 input,
 select,
 textarea {
-  color: #e9edf5;
-  background-color: #0b1220;
+  color: rgb(var(--color-text));
+  background-color: rgb(var(--color-panel));
 }
 input::placeholder,
 textarea::placeholder {
-  color: #6b7690;
+  color: rgb(var(--color-muted-2));
 }
 input:disabled,
 select:disabled,
 textarea:disabled {
-  color: #8b93a7;
+  color: rgb(var(--color-muted));
 }
 
 /* Απαλό pulsing glow — δείχνει "ζωντανή" κατάσταση (π.χ. ανοιχτές εγγραφές). */
