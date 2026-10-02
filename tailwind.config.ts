@@ -18,6 +18,14 @@ const config: Config = {
         muted: "rgb(var(--color-muted) / <alpha-value>)",
         muted2: "rgb(var(--color-muted-2) / <alpha-value>)",
         good: "rgb(var(--color-good) / <alpha-value>)",
+        // Χρώματα κατάστασης για badges (Έγκυρη/Εκκρεμεί/Σε εξέλιξη κ.λπ.) — επιβεβαιωμένο,
+        // από την παλέτα που ενέκρινε ο Isaak.
+        okBg: "rgb(var(--color-ok-bg) / <alpha-value>)",
+        okText: "rgb(var(--color-ok-text) / <alpha-value>)",
+        pendingBg: "rgb(var(--color-pending-bg) / <alpha-value>)",
+        pendingText: "rgb(var(--color-pending-text) / <alpha-value>)",
+        infoBg: "rgb(var(--color-info-bg) / <alpha-value>)",
+        infoText: "rgb(var(--color-info-text) / <alpha-value>)",
       },
       fontFamily: {
         serif: ["Fraunces", "serif"],
