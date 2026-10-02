@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createCompetition } from "./actions";
-import { AUDIENCE_LABELS } from "@/lib/teams/teams";
 import Link from "next/link";
-import SavableForm from "@/components/SavableForm";
+import CreateTournamentForm from "./CreateTournamentForm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,109 +52,7 @@ export default async function AdminHome() {
         )}
       </div>
 
-      <SavableForm action={createCompetition} className="flex flex-col gap-3 bg-card border border-cardBorder rounded-xl p-5">
-        <div className="text-xs uppercase tracking-wide text-muted">Νέα Διοργάνωση</div>
-        <input
-          name="name"
-          required
-          placeholder="π.χ. 18ο Πανελλήνιο Ομαδικό Παίδων-Κορασίδων"
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-        />
-        <div className="flex gap-3">
-          <input
-            name="format"
-            defaultValue="swiss"
-            placeholder="format"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1"
-          />
-          <input
-            name="rounds_count"
-            type="number"
-            placeholder="γύροι"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm w-24"
-          />
-        </div>
-        <input
-          name="venue"
-          placeholder="Χώρος αγώνων"
-          className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-        />
-        <div className="flex gap-3">
-          <input name="starts_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-          <input name="ends_on" type="date" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1" />
-        </div>
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Σε ποιους απευθύνεται
-          <select name="audience_type" defaultValue="eso_club" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
-            {(Object.entries(AUDIENCE_LABELS) as [string, string][]).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
-          <input
-            name="max_teams_per_club"
-            type="number"
-            min={1}
-            defaultValue={1}
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Προκήρυξη (link, π.χ. Google Drive)
-          <input
-            name="announcement_url"
-            type="url"
-            placeholder="https://drive.google.com/..."
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Χώρος αγώνων — link Google Maps
-          <input
-            name="venue_maps_url"
-            type="url"
-            placeholder="https://maps.app.goo.gl/..."
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Προθεσμία εγγραφών
-          <input
-            name="registration_deadline"
-            type="datetime-local"
-            className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-          />
-        </label>
-        <div className="flex gap-3">
-          <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
-            Παράβολο συμμετοχής (€)
-            <input
-              name="entry_fee_amount"
-              type="number"
-              step="0.01"
-              min={0}
-              placeholder="κενό = χωρίς παράβολο"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm flex-1 text-muted">
-            Σημείωση παραβόλου
-            <input
-              name="entry_fee_note"
-              placeholder="π.χ. ανά αθλητή"
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-            />
-          </label>
-        </div>
-        <p className="text-xs text-muted -mt-1">
-          Αν αφήσετε το ποσό κενό, η ενότητα παραβόλου δεν εμφανίζεται καθόλου στο Portal Αρχηγού.
-        </p>
-        <button type="submit" className="bg-gold text-bg font-semibold rounded-lg py-2.5 text-sm mt-1">
-          Δημιουργία
-        </button>
-      </SavableForm>
+      <CreateTournamentForm action={createCompetition} />
     </div>
   );
 }
