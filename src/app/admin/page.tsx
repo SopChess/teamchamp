@@ -21,13 +21,13 @@ export default async function AdminHome() {
           <h1 className="font-serif font-bold text-2xl">Διοργανώσεις</h1>
           <div className="flex gap-4">
             <Link href="/admin/users" className="text-xs text-gold underline">
-              Χρήστες &amp; Πρόσβαση →
+              Χρήστες &amp; Πρόσβαση
             </Link>
             <Link href="/admin/clubs" className="text-xs text-gold underline">
-              Σύλλογοι/Σχολεία →
+              Σύλλογοι/Σχολεία
             </Link>
             <Link href="/admin/directory" className="text-xs text-gold underline">
-              Κατάλογος Αθλητών →
+              Κατάλογος Αθλητών
             </Link>
           </div>
         </div>
@@ -46,7 +46,6 @@ export default async function AdminHome() {
                 {c.format} · {c.rounds_count ?? "?"} γύροι
               </div>
             </div>
-            <span className="text-muted text-sm">→</span>
           </Link>
         ))}
         {(competitions ?? []).length === 0 && (

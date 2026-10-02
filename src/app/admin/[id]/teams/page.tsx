@@ -188,7 +188,7 @@ export default async function TeamsPage({ params }: { params: { id: string } }) 
               <div className="flex items-center justify-between gap-2 pt-1">
                 <div className="flex items-center gap-3 text-xs">
                   <Link href={`/admin/${params.id}/teams/${t.id}`} className="text-gold underline">
-                    Επεξεργασία σύνθεσης →
+                    Επεξεργασία σύνθεσης
                   </Link>
                   {captainUrl && <span className="text-muted break-all">{captainUrl}</span>}
                 </div>

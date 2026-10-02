@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { recoverCaptainLink } from "./actions";
 import SavableForm from "@/components/SavableForm";
 
@@ -6,10 +5,7 @@ export default function RecoverCaptainLinkPage() {
   return (
     <div className="min-h-screen px-6 py-12 max-w-sm mx-auto flex flex-col gap-6">
       <div>
-        <Link href="/" className="text-xs text-muted hover:text-gold">
-          ← Αρχική
-        </Link>
-        <h1 className="font-serif font-bold text-2xl mt-2">Ξέχασα το Link μου</h1>
+        <h1 className="font-serif font-bold text-2xl">Ξέχασα το Link μου</h1>
         <p className="text-xs text-muted mt-1">
           Αν έχετε εγγράψει ομάδα, δώστε το email και το τηλέφωνο που χρησιμοποιήσατε — αν ταιριάζουν,
           θα σας στείλουμε ξανά το ίδιο link του Team Portal.

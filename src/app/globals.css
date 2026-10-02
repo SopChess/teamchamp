@@ -9,11 +9,41 @@
      αποδίδει μόνος του (π.χ. το ανοιχτό μενού ενός <select>, scrollbars), που αλλιώς
      πέφτουν σε φωτεινές προεπιλογές ασυνεπείς με το υπόλοιπο θέμα. */
   color-scheme: dark;
+
+  /* Χρώματα θέματος ως CSS variables (RGB, χωρίς μονάδες — επιτρέπει τα υπάρχοντα
+     bg-gold/10 κ.λπ. να συνεχίσουν να δουλεύουν κανονικά). Προεπιλογή: ΙΔΙΟ σκούρο
+     θέμα με πριν, byte-for-byte — καμία οπτική αλλαγή εκτός admin με light mode. */
+  --color-bg: 11 18 32;
+  --color-panel: 11 18 32;
+  --color-card: 18 27 46;
+  --color-card-border: 30 42 66;
+  --color-gold: 201 161 90;
+  --color-gold-soft: 224 190 122;
+  --color-muted: 139 147 167;
+  --color-muted-2: 107 118 144;
+  --color-good: 142 209 122;
+  --color-text: 233 237 245;
+}
+
+/* Μόνο το admin μπορεί να γίνει ανοιχτόχρωμο (επιβεβαιωμένο: ο χρήστης αλλάζει τον
+   διακόπτη ο ίδιος) — Portal Αρχηγού και δημόσιες σελίδες μένουν πάντα σκούρες. */
+[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: 248 250 252;
+  --color-panel: 255 255 255;
+  --color-card: 255 255 255;
+  --color-card-border: 226 232 240;
+  --color-gold: 164 116 28;
+  --color-gold-soft: 133 92 20;
+  --color-muted: 100 116 139;
+  --color-muted-2: 148 163 184;
+  --color-good: 22 163 74;
+  --color-text: 15 23 42;
 }
 
 body {
-  background: #0b1220;
-  color: #e9edf5;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
 }
 
 /* Ρητό χρώμα κειμένου/φόντου σε όλα τα πεδία φόρμας — χωρίς αυτό, κάποιοι browsers
@@ -57,6 +87,10 @@ textarea:disabled {
   background-position: 0 0, 0 32px, 32px -32px, -32px 0px;
   background-attachment: fixed;
 }
+[data-theme="light"].chess-bg-admin {
+  background-image: none;
+  background-color: rgb(var(--color-bg));
+}
 
 /* Το admin έχει τη δική του, ψυχρότερη απόχρωση του ίδιου μοτίβου (επιβεβαιωμένο:
    ίδια οικογένεια χρωμάτων με το Portal, αλλά αμέσως ξεχωριστή — ώστε να είναι
@@ -65,7 +99,10 @@ textarea:disabled {
 .chess-bg-admin {
   /* Επιβεβαιωμένο: η πρώτη προσπάθεια ήταν πρακτικά αόρατη (πολύ κοντά στο navy του
      Portal, πάρα πολύ χαμηλή διαφάνεια στο μοτίβο) — τώρα πραγματικά ξεχωρίζει με μια
-     ματιά: πιο σκούρο, καθαρά μπλε-γκρι (όχι navy/χρυσό) φόντο, με πολύ πιο έντονο μοτίβο. */
+     ματιά: πιο σκούρο, καθαρά μπλε-γκρι (όχι navy/χρυσό) φόντο, με πολύ πιο έντονο μοτίβο.
+     Το light mode (data-theme="light") αγνοεί αυτό το σκακιστικό φόντο — γίνεται απλό
+     ανοιχτόχρωμο, πιο κατάλληλο για επαγγελματικό admin σε φωτεινό περιβάλλον. */
+  color: rgb(var(--color-text));
   background-color: #0A1420;
   background-image:
     linear-gradient(45deg, rgba(90, 140, 210, 0.11) 25%, transparent 25%),

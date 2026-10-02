@@ -124,7 +124,7 @@ export default async function RoundsPage({ params }: { params: { id: string } })
                     href={`/admin/${params.id}/rounds/${r.id}/resolve`}
                     className="text-xs bg-panel border border-cardBorder rounded-full px-3 py-1 text-gold"
                   >
-                    Εκκρεμεί αντιστοίχιση →
+                    Εκκρεμεί αντιστοίχιση
                   </Link>
                 )}
               </div>

@@ -25,7 +25,7 @@ export default function LoginPage({
         </p>
         {message && <p className="text-sm text-red-400">{message}</p>}
         <Link href="/" className="text-sm text-gold underline">
-          Μετάβαση στην αρχική σελίδα →
+          Μετάβαση στην αρχική σελίδα
         </Link>
       </div>
     </div>

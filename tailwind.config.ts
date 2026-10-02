@@ -5,15 +5,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#0B1220",
-        panel: "#0B1220",
-        card: "#121B2E",
-        cardBorder: "#1E2A42",
-        gold: "#C9A15A",
-        goldSoft: "#E0BE7A",
-        muted: "#8B93A7",
-        muted2: "#6B7690",
-        good: "#8ED17A",
+        // Αναφορά σε CSS variables (όχι ακατέργαστα hex πια) — επιβεβαιωμένο: αυτό
+        // επιτρέπει το admin να αλλάζει light/dark απλά αλλάζοντας τις τιμές των
+        // μεταβλητών σε ένα σημείο (globals.css), χωρίς να αγγίξουμε κάθε component.
+        // Το "<alpha-value>" διατηρεί λειτουργικά όλα τα υπάρχοντα bg-gold/10 κ.λπ.
+        bg: "rgb(var(--color-bg) / <alpha-value>)",
+        panel: "rgb(var(--color-panel) / <alpha-value>)",
+        card: "rgb(var(--color-card) / <alpha-value>)",
+        cardBorder: "rgb(var(--color-card-border) / <alpha-value>)",
+        gold: "rgb(var(--color-gold) / <alpha-value>)",
+        goldSoft: "rgb(var(--color-gold-soft) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
+        muted2: "rgb(var(--color-muted-2) / <alpha-value>)",
+        good: "rgb(var(--color-good) / <alpha-value>)",
       },
       fontFamily: {
         serif: ["Fraunces", "serif"],

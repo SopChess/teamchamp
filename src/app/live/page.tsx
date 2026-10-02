@@ -9,7 +9,7 @@ export default function LivePage() {
           Η ζωντανή κατάταξη βρίσκεται πλέον στη σελίδα κάθε πρωταθλήματος.
         </p>
         <Link href="/" className="text-sm text-gold underline">
-          Μετάβαση στα πρωταθλήματα →
+          Μετάβαση στα πρωταθλήματα
         </Link>
       </div>
     </div>
