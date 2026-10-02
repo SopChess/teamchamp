@@ -1,7 +1,22 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { callSafely } from "./safeAction";
 
 const fd = () => new FormData();
+
+describe('safeAction.ts — ΠΟΤΕ ξανά "use server" (επιβεβαιωμένο σοβαρό bug fix)', () => {
+  it('δεν περιέχει τη δήλωση "use server" — είναι κοινό client-side βοήθημα, δέχεται συνάρτηση ως όρισμα', () => {
+    // Αν ξαναμπεί "use server" εδώ, το Next.js πετάει σε production "Client Functions
+    // cannot be passed directly to Server Functions" ΣΙΩΠΗΛΑ σε ΚΑΘΕ SavableForm σε όλη την
+    // εφαρμογή (↑/↓/✕ στη σύνθεση, κάθε φόρμα παντού) — ακριβώς το bug που περιέγραψε ο
+    // Isaak τρεις φορές πριν εντοπιστεί (ένα πραγματικό σφάλμα browser, όχι κάτι που
+    // φαίνεται σε tsc/build/tests με κλήση της συνάρτησης απευθείας). Αυτό το test δεν
+    // μπορεί να αναπαράγει το ίδιο το σφάλμα RSC, αλλά εμποδίζει την επιστροφή της αιτίας.
+    const content = readFileSync(join(__dirname, "safeAction.ts"), "utf-8");
+    expect(content).not.toMatch(/^\s*["']use server["']/m);
+  });
+});
 
 describe("callSafely", () => {
   it("επιτυχία → { ok: true }", async () => {

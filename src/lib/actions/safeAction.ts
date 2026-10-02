@@ -1,6 +1,14 @@
-"use server";
-
 /**
+ * ΔΕΝ είναι "use server" (επιβεβαιωμένο, σημαντικό bug fix): αυτό είναι απλό,
+ * κοινό βοήθημα που τρέχει ΠΑΝΤΑ στον client (μέσα στο SavableForm) — αν είχε
+ * "use server", θα γινόταν το ίδιο ξεχωριστό server action, και τότε το να
+ * του περάσουμε μια client-side συνάρτηση ως όρισμα (το "action" του κάθε
+ * SavableForm) θα παραβίαζε τον κανόνα του Next.js "Client Functions cannot
+ * be passed directly to Server Functions" — ΑΚΡΙΒΩΣ το σφάλμα που έκανε ΚΑΘΕ
+ * κουμπί μέσα σε SavableForm να αποτυγχάνει σιωπηλά σε production, σε κάθε
+ * σελίδα της εφαρμογής, χωρίς κανένα μήνυμα: η κλήση δεν έφτανε καν στον
+ * πραγματικό server action — σκαλώνει πριν καν ξεκινήσει.
+ *
  * Το Next.js ΑΦΑΙΡΕΙ το μήνυμα από κάθε thrown Error μέσα σε Server Action
  * όταν τρέχει σε production build — ο browser βλέπει μόνο ένα γενικό "An
  * error occurred in the Server Components render...". Οι επιστρεφόμενες
