@@ -1,30 +1,54 @@
 import type { BoardCoverage } from "@/lib/rosterRules/basicRosterCheck";
 
 /**
- * Ζωντανή κάρτα ανά σκακιέρα — δείχνει τον όρο της και αν καλύπτεται ήδη από
- * τον τρέχοντα κατάλογο (Σχέδιο Α, επιβεβαιωμένο): ΚΑΘΟΔΗΓΕΙ, δεν μπλοκάρει
- * καμία προσθήκη αθλητή. Ενημερώνεται μετά από κάθε προσθήκη/αφαίρεση, αφού
- * η σελίδα ήδη ξαναφορτώνει τα δεδομένα σε κάθε τέτοια ενέργεια.
+ * Πίνακας ανά σκακιέρα — Σκακιέρα / Αθλητής / Κατηγορία / Έλεγχος (επιβεβαιωμένο,
+ * αντικαθιστά τις παλιές κάρτες — ίδιο περιεχόμενο, νέα παρουσίαση σε μορφή πίνακα,
+ * ίδια σημειογραφία U16/F στη στήλη "Κατηγορία"). Σχέδιο Α, επιβεβαιωμένο: ΚΑΘΟΔΗΓΕΙ,
+ * δεν μπλοκάρει καμία προσθήκη αθλητή. Ενημερώνεται μετά από κάθε προσθήκη/αφαίρεση.
  */
 export default function BoardCoverageCards({ boards }: { boards: BoardCoverage[] }) {
   if (boards.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {boards.map((b) => (
-        <div
-          key={b.board}
-          className={`rounded-lg px-3 py-2.5 border text-sm transition-colors ${
-            b.covered ? "bg-good/10 border-good/40" : "bg-panel border-cardBorder"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold">Σκακιέρα {b.board}</span>
-            {b.covered && <span className="text-good text-xs">✓</span>}
-          </div>
-          <div className="text-xs text-muted mt-0.5">{b.shortLabel || "Χωρίς όρο"}</div>
-        </div>
-      ))}
+    <div className="bg-card border border-cardBorder rounded-xl overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-cardBorder">
+            <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Σκακιέρα</th>
+            <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Αθλητής</th>
+            <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Κατηγορία</th>
+            <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Έλεγχος</th>
+          </tr>
+        </thead>
+        <tbody>
+          {boards.map((b) => (
+            <tr key={b.board} className="border-b border-cardBorder last:border-b-0">
+              <td className="px-3 py-2.5 font-semibold">{b.board}</td>
+              <td className="px-3 py-2.5">
+                {b.athleteName ?? <span className="text-muted">Επιλογή αθλητή</span>}
+              </td>
+              <td className="px-3 py-2.5">
+                {b.shortLabel ? (
+                  <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-infoBg text-infoText">
+                    {b.shortLabel}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted">Χωρίς όρο</span>
+                )}
+              </td>
+              <td className="px-3 py-2.5">
+                <span
+                  className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                    b.covered ? "bg-okBg text-okText" : "bg-pendingBg text-pendingText"
+                  }`}
+                >
+                  {b.covered ? "Έγκυρη" : "Εκκρεμεί"}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

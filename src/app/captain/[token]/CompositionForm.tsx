@@ -187,22 +187,47 @@ export default function CompositionForm({ rules, roster, players, initial, submi
 
       <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Προεπισκόπηση σύνθεσης</div>
-        <div className="bg-card border border-cardBorder rounded-xl px-4 py-1">
-          {boards.map((b) => {
-            const a = assignments.find((x) => x.board === b);
-            return (
-              <div key={b} className="flex items-center justify-between py-2.5 border-b border-cardBorder last:border-b-0">
-                <span className="text-sm text-muted">
-                  Σκακιέρα {b}
-                  {(() => {
-                    const short = describeConstraintsShort(ruleFor(b)?.constraints ?? [], referenceYear);
-                    return short ? ` · ${short}` : "";
-                  })()}
-                </span>
-                <span className="text-sm font-semibold">{a ? nameOf(players[a.player_id]) : "—"}</span>
-              </div>
-            );
-          })}
+        <div className="bg-card border border-cardBorder rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-cardBorder">
+                <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Σκακιέρα</th>
+                <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Αθλητής</th>
+                <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Κατηγορία</th>
+                <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Έλεγχος</th>
+              </tr>
+            </thead>
+            <tbody>
+              {boards.map((b) => {
+                const a = assignments.find((x) => x.board === b);
+                const short = describeConstraintsShort(ruleFor(b)?.constraints ?? [], referenceYear);
+                return (
+                  <tr key={b} className="border-b border-cardBorder last:border-b-0">
+                    <td className="px-3 py-2.5 font-semibold">{b}</td>
+                    <td className="px-3 py-2.5">
+                      {a ? nameOf(players[a.player_id]) : <span className="text-muted">Επιλογή αθλητή</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {short ? (
+                        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-infoBg text-infoText">{short}</span>
+                      ) : (
+                        <span className="text-xs text-muted">Χωρίς όρο</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                          a ? "bg-okBg text-okText" : "bg-pendingBg text-pendingText"
+                        }`}
+                      >
+                        {a ? "Έγκυρη" : "Εκκρεμεί"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

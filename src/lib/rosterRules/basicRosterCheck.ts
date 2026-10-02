@@ -80,6 +80,8 @@ export interface BoardCoverage {
   /** Σύντομη σκακιστική σημειογραφία (επιβεβαιωμένο) — "U16", "F" κ.λπ. αντί για πλήρη πρόταση. */
   shortLabel: string;
   covered: boolean;
+  /** Όνομα του αθλητή που καλύπτει αυτή τη σκακιέρα σήμερα, null αν καμία ακόμα (πίνακας σύνθεσης, επιβεβαιωμένο). */
+  athleteName: string | null;
 }
 
 /**
@@ -96,16 +98,19 @@ export function boardCoverageStatus(
 ): BoardCoverage[] {
   const boardCount = rules.match_board_count ?? rules.board_rules.length;
   const assignment = computeDefaultAssignment(rules, roster, players);
-  const filledBoards = new Set(assignment.map((a) => a.board));
+  const playerIdByBoard = new Map(assignment.map((a) => [a.board, a.player_id]));
 
   return boardsInOrder(rules, boardCount).map((board) => {
     const rule = rules.board_rules.find((b) => b.board === board);
     const constraints = rule?.constraints ?? [];
+    const playerId = playerIdByBoard.get(board);
+    const player = playerId ? players[playerId] : undefined;
     return {
       board,
       label: describeConstraints(constraints),
       shortLabel: describeConstraintsShort(constraints, referenceYear),
-      covered: filledBoards.has(board),
+      covered: playerIdByBoard.has(board),
+      athleteName: player ? `${player.last_name} ${player.first_name}` : null,
     };
   });
 }

@@ -76,14 +76,15 @@ describe("boardCoverageStatus — ζωντανές κάρτες σκακιερώ
   it("σκακιέρα χωρίς κανέναν αθλητή που να ταιριάζει → covered: false, με ετικέτα του όρου", () => {
     const status = boardCoverageStatus(rules, [], {});
     const board4 = status.find((s) => s.board === 4)!;
-    expect(board4).toEqual({ board: 4, label: "Γυναίκα", shortLabel: "F", covered: false });
+    expect(board4).toEqual({ board: 4, label: "Γυναίκα", shortLabel: "F", covered: false, athleteName: null });
   });
 
-  it("μόλις προστεθεί αθλήτρια που καλύπτει τη σκακιέρα 4, γίνεται covered: true", () => {
+  it("μόλις προστεθεί αθλήτρια που καλύπτει τη σκακιέρα 4, γίνεται covered: true ΚΑΙ εμφανίζεται το όνομά της (πίνακας σύνθεσης, επιβεβαιωμένο)", () => {
     const players = { p1: player("p1", "F") };
     const roster = [entry("p1", 1)];
     const board4 = boardCoverageStatus(rules, roster, players).find((s) => s.board === 4)!;
     expect(board4.covered).toBe(true);
+    expect(board4.athleteName).toBe("p1 N");
   });
 
   it("οι σκακιέρες χωρίς όρους έχουν κενή ετικέτα", () => {
