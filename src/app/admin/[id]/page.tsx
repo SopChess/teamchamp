@@ -17,7 +17,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, registration_deadline, entry_fee_amount, entry_fee_note, status, requires_certificate")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, time_control, registration_deadline, entry_fee_amount, entry_fee_note, entry_fee_deadline, status, requires_certificate")
     .eq("id", params.id)
     .single();
 
@@ -102,16 +102,20 @@ export default async function CompetitionPage({ params }: { params: { id: string
           Αλλαγή εδώ δεν επηρεάζει ομάδες που έχουν ήδη δηλωθεί.
         </span>
       </label>
-      <label className="flex flex-col gap-1 text-sm text-muted">
-        Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
-        <input
-          name="max_teams_per_club"
-          type="number"
-          min={1}
-          defaultValue={competition?.max_teams_per_club ?? 1}
-          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
-        />
-      </label>
+      {/* Μόνο για "Ομάδες μέλη ΕΣΟ" — επιβεβαιωμένο: δεν έχει νόημα για ελεύθερη επωνυμία,
+          οπότε δεν εμφανίζεται καν αντί να φαίνεται πάντα χωρίς να εφαρμόζεται. */}
+      {(competition?.audience_type ?? "eso_club") === "eso_club" && (
+        <label className="flex flex-col gap-1 text-sm text-muted">
+          Μέγιστες ομάδες ανά σύλλογο
+          <input
+            name="max_teams_per_club"
+            type="number"
+            min={1}
+            defaultValue={competition?.max_teams_per_club ?? 1}
+            className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+          />
+        </label>
+      )}
       <label className="flex flex-col gap-1 text-sm text-muted">
         Προκήρυξη (link, π.χ. Google Drive)
         <input
@@ -142,6 +146,15 @@ export default async function CompetitionPage({ params }: { params: { id: string
           className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
         <span className="text-xs text-muted">Προαιρετικό — εμφανίζεται στη δημόσια σελίδα του τουρνουά, αν δοθεί.</span>
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Χρόνος σκέψης
+        <input
+          name="time_control"
+          defaultValue={competition?.time_control ?? ""}
+          placeholder="π.χ. 15΄+10΄΄/κίνηση"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted">
         Προθεσμία εγγραφών
@@ -179,6 +192,16 @@ export default async function CompetitionPage({ params }: { params: { id: string
           />
         </label>
       </div>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Προθεσμία πληρωμής παραβόλου
+        <input
+          name="entry_fee_deadline"
+          type="datetime-local"
+          defaultValue={competition?.entry_fee_deadline ? new Date(competition.entry_fee_deadline).toISOString().slice(0, 16) : ""}
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+        <span className="text-xs text-muted">Προαιρετική, ξεχωριστή από την προθεσμία εγγραφών — κενή αν δεν χρειάζεται.</span>
+      </label>
       <p className="text-xs text-muted -mt-1">
         Βεβαίωση και παράβολο ρυθμίζονται ανεξάρτητα — αν καμία από τις δύο δεν χρειάζεται, το
         αντίστοιχο tab δεν εμφανίζεται καθόλου στο Portal Αρχηγού.

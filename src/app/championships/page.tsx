@@ -28,8 +28,17 @@ export default async function ChampionshipsPage() {
   const supabase = createClient();
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, name, starts_on, ends_on, venue, announcement_url, venue_maps_url, chess_results_url, registration_deadline, status")
-    .order("starts_on", { ascending: false, nullsFirst: false });
+    .select("id, name, starts_on, ends_on, venue, announcement_url, venue_maps_url, chess_results_url, time_control, registration_deadline, entry_fee_amount, entry_fee_note, entry_fee_deadline, status");
+
+  // Ταξινόμηση κατά ΠΛΗΣΙΕΣΤΕΡΗ ημερομηνία στο σήμερα (επιβεβαιωμένο) — όχι απλά
+  // φθίνουσα· ένα τουρνουά που μόλις ξεκίνησε είναι πιο "κοντά" από ένα σε 3 μήνες.
+  // Χωρίς καμία ημερομηνία έναρξης, πάει τελευταίο.
+  const now = Date.now();
+  const sorted = [...(competitions ?? [])].sort((a, b) => {
+    const da = a.starts_on ? Math.abs(new Date(a.starts_on).getTime() - now) : Infinity;
+    const db = b.starts_on ? Math.abs(new Date(b.starts_on).getTime() - now) : Infinity;
+    return da - db;
+  });
 
   return (
     <div className="min-h-screen px-6 py-12 max-w-3xl mx-auto flex flex-col gap-8">
@@ -41,13 +50,14 @@ export default async function ChampionshipsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {(competitions ?? []).map((c) => {
+        {sorted.map((c) => {
           const from = formatDate(c.starts_on);
           const to = formatDate(c.ends_on);
           const dates = from && to && from !== to ? `${from} – ${to}` : from ?? to;
           const storedStatus = (c.status ?? "open") as TournamentStatus;
           const status = effectiveTournamentStatus(storedStatus, c.registration_deadline);
           const deadline = formatDeadline(c.registration_deadline);
+          const feeDeadline = formatDeadline(c.entry_fee_deadline);
 
           return (
             <div
@@ -66,38 +76,26 @@ export default async function ChampionshipsPage() {
               </div>
 
               <div className="text-sm text-muted flex flex-col gap-1.5">
-                {dates && (
-                  <div className="flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" />
-                    </svg>
-                    {dates}
-                  </div>
-                )}
+                {dates && <div>📅 {dates}</div>}
                 {c.venue && (
-                  <div className="flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <path d="M12 21s7-6.4 7-12a7 7 0 1 0-14 0c0 5.6 7 12 7 12Z" /><circle cx="12" cy="9" r="2.3" />
-                    </svg>
-                    {c.venue}
+                  <div>
+                    📍 {c.venue}
                     {c.venue_maps_url && (
-                      <a
-                        href={c.venue_maps_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-gold underline"
-                      >
-                        (Google Maps)
-                      </a>
+                      <>
+                        {" "}
+                        <a href={c.venue_maps_url} target="_blank" rel="noreferrer" className="text-gold underline">
+                          (Google Maps)
+                        </a>
+                      </>
                     )}
                   </div>
                 )}
-                {deadline && (
-                  <div className="flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" />
-                    </svg>
-                    Προθεσμία εγγραφών: {deadline}
+                {c.time_control && <div>⏱ Χρόνος σκέψης: {c.time_control}</div>}
+                {deadline && <div>⏳ Προθεσμία εγγραφών: {deadline}</div>}
+                {c.entry_fee_amount != null && (
+                  <div>
+                    💳 Παράβολο: {c.entry_fee_amount}€{c.entry_fee_note ? ` (${c.entry_fee_note})` : ""}
+                    {feeDeadline ? ` — προθεσμία ${feeDeadline}` : ""}
                   </div>
                 )}
               </div>
@@ -105,15 +103,15 @@ export default async function ChampionshipsPage() {
               <div className="flex gap-4 mt-1">
                 {c.announcement_url && (
                   <a href={c.announcement_url} target="_blank" rel="noreferrer" className="text-xs text-gold underline">
-                    Προκήρυξη →
+                    📄 Προκήρυξη
                   </a>
                 )}
                 <Link href={`/championships/${c.id}`} className="text-xs text-gold underline">
-                  Κατάταξη &amp; Αποτελέσματα →
+                  Κατάταξη &amp; Αποτελέσματα
                 </Link>
                 {c.chess_results_url && (
                   <a href={c.chess_results_url} target="_blank" rel="noreferrer" className="text-xs text-gold underline">
-                    chess-results.com →
+                    chess-results.com
                   </a>
                 )}
               </div>

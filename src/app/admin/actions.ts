@@ -32,6 +32,9 @@ export async function createCompetition(formData: FormData) {
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
   const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
   const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
+  const timeControl = String(formData.get("time_control") ?? "").trim() || null;
+  const entryFeeDeadlineRaw = String(formData.get("entry_fee_deadline") ?? "").trim();
+  const entryFeeDeadline = entryFeeDeadlineRaw ? new Date(entryFeeDeadlineRaw).toISOString() : null;
   const statusRaw = String(formData.get("status") ?? "open");
   const status: TournamentStatus = isValidTournamentStatus(statusRaw) ? statusRaw : "open";
   const requiresCertificate = formData.get("requires_certificate") === "on";
@@ -57,6 +60,8 @@ export async function createCompetition(formData: FormData) {
       registration_deadline: registrationDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
+      time_control: timeControl,
+      entry_fee_deadline: entryFeeDeadline,
       status,
       requires_certificate: requiresCertificate,
     })
@@ -92,6 +97,9 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
   const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
   const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
+  const timeControl = String(formData.get("time_control") ?? "").trim() || null;
+  const entryFeeDeadlineRaw = String(formData.get("entry_fee_deadline") ?? "").trim();
+  const entryFeeDeadline = entryFeeDeadlineRaw ? new Date(entryFeeDeadlineRaw).toISOString() : null;
   const statusRaw = String(formData.get("status") ?? "open");
   const status: TournamentStatus = isValidTournamentStatus(statusRaw) ? statusRaw : "open";
   const requiresCertificate = formData.get("requires_certificate") === "on";
@@ -115,6 +123,8 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       registration_deadline: registrationDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
+      time_control: timeControl,
+      entry_fee_deadline: entryFeeDeadline,
       status,
       requires_certificate: requiresCertificate,
     })
