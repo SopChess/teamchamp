@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AutoRefresh from "@/app/AutoRefresh";
+import BackHome from "@/components/BackHome";
 import {
   boardScore,
   computeStandings,
@@ -109,10 +109,8 @@ export default async function ChampionshipPage({ params }: { params: { id: strin
       <AutoRefresh seconds={5} />
 
       <div>
-        <Link href="/" className="text-xs text-muted hover:text-gold">
-          ← Αρχική
-        </Link>
-        <h1 className="font-serif font-bold text-2xl mt-2">{c.name}</h1>
+        <BackHome />
+        <h1 className="font-serif font-bold text-2xl mt-3">{c.name}</h1>
         <div className="text-xs text-muted mt-1">
           {info.filter(([, v]) => v).map(([l, v]) => `${l}: ${v}`).join(" · ")}
         </div>

@@ -6,6 +6,7 @@ import { searchDirectoryForRegistration, searchDirectoryByNumberForRegistration 
 import { isRegistrationOpen, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 import { AUDIENCE_FIELD_LABEL, AUDIENCE_FIELD_EXAMPLE, requiresEsoCode, type AudienceType } from "@/lib/teams/teams";
 import SavableForm from "@/components/SavableForm";
+import BackHome from "@/components/BackHome";
 import AthletePicker from "./AthletePicker";
 import type { RosterRules } from "@/lib/rosterRules/types";
 
@@ -39,8 +40,9 @@ export default async function RegisterPage({ params }: { params: { id: string } 
   return (
     <div className="min-h-screen px-6 py-12 max-w-md mx-auto flex flex-col gap-8">
       <div>
+        <BackHome className="mb-1.5" />
         <Link href={`/championships/${params.id}`} className="text-xs text-muted hover:text-gold">
-          ← {competition.name}
+          {competition.name}
         </Link>
         <h1 className="font-serif font-bold text-2xl mt-2">Εγγραφή Ομάδας</h1>
       </div>

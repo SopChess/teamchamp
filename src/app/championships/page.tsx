@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import BackHome from "@/components/BackHome";
 import {
   effectiveTournamentStatus, isRegistrationOpen, TOURNAMENT_STATUS_LABEL, type TournamentStatus,
 } from "@/lib/competitions/tournamentStatus";
@@ -43,10 +44,8 @@ export default async function ChampionshipsPage() {
   return (
     <div className="min-h-screen px-6 py-12 max-w-3xl mx-auto flex flex-col gap-8">
       <div>
-        <Link href="/" className="text-xs text-muted hover:text-gold">
-          ← Αρχική
-        </Link>
-        <h1 className="font-serif font-bold text-2xl mt-2">Ομαδικά Πρωταθλήματα</h1>
+        <BackHome />
+        <h1 className="font-serif font-bold text-2xl mt-3">Ομαδικά Πρωταθλήματα</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
