@@ -33,7 +33,7 @@ const CERTIFICATE_BUCKET = "attendance-certificates";
  * μέσω αυτού του token-in-URL (§2 του document), όχι μέσω Supabase Auth.
  */
 const TEAM_COLUMNS =
-  "id, competition_id, status, roster_lock_deadline, roster_locked, captain_access_token, captain_account_id, competitions(registration_deadline)";
+  "id, competition_id, status, roster_lock_deadline, roster_locked, captain_access_token, captain_account_id, competitions(registration_deadline, roster_submission_deadline)";
 
 type TeamRow = {
   id: string;
@@ -43,12 +43,27 @@ type TeamRow = {
   roster_locked: boolean;
   captain_access_token: string | null;
   captain_account_id: string | null;
-  competitions: { registration_deadline: string | null } | { registration_deadline: string | null }[] | null;
+  competitions:
+    | { registration_deadline: string | null; roster_submission_deadline: string | null }
+    | { registration_deadline: string | null; roster_submission_deadline: string | null }[]
+    | null;
 };
 
 function registrationDeadlineOf(team: TeamRow): string | null {
   const c = team.competitions;
   return (Array.isArray(c) ? c[0] : c)?.registration_deadline ?? null;
+}
+
+/**
+ * Προθεσμία κλειδώματος βασικής σύνθεσης (επιβεβαιωμένο): αν η διοργάνωση έχει ορίσει
+ * ΞΕΧΩΡΙΣΤΗ "Προθεσμία κατάθεσης βασικών συνθέσεων", αυτή υπερισχύει — διαφορετικά
+ * συνεχίζουμε να χρησιμοποιούμε την προθεσμία εγγραφών, όπως πάντα (καμία αλλαγή
+ * συμπεριφοράς για διοργανώσεις που δεν έχουν ορίσει τη νέα, ξεχωριστή προθεσμία).
+ */
+function rosterDeadlineOf(team: TeamRow): string | null {
+  const c = team.competitions;
+  const comp = Array.isArray(c) ? c[0] : c;
+  return comp?.roster_submission_deadline ?? comp?.registration_deadline ?? null;
 }
 
 /**
@@ -95,15 +110,15 @@ async function getTeamByToken(token: string, teamId: string | undefined): Promis
 }
 
 /**
- * Το ΜΟΝΟ κριτήριο κλειδώματος της βασικής σύνθεσης είναι η προθεσμία εγγραφών
- * της διοργάνωσης (επιβεβαιωμένο) — όχι χειροκίνητο κλείδωμα από τον admin, όχι
- * παλιό ανά-ομάδα πεδίο. Έως τη λήξη της, ο υπεύθυνος μπορεί να κάνει όσες
- * αλλαγές θέλει.
+ * Το κριτήριο κλειδώματος της βασικής σύνθεσης είναι η προθεσμία κατάθεσης συνθέσεων αν
+ * έχει οριστεί ξεχωριστά, αλλιώς η προθεσμία εγγραφών (επιβεβαιωμένο, βλ. rosterDeadlineOf)
+ * — όχι χειροκίνητο κλείδωμα από τον admin, όχι παλιό ανά-ομάδα πεδίο. Έως τη λήξη της, ο
+ * υπεύθυνος μπορεί να κάνει όσες αλλαγές θέλει.
  */
 function assertRosterEditable(team: TeamRow) {
-  const deadline = registrationDeadlineOf(team);
+  const deadline = rosterDeadlineOf(team);
   if (deadline && new Date(deadline) < new Date()) {
-    throw new Error("Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.");
+    throw new Error("Η προθεσμία κατάθεσης σύνθεσης έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.");
   }
 }
 
@@ -206,6 +221,12 @@ export async function addAthleteToTeam(
   });
   if (entryError) {
     if (createdHere) await supabase.from("players").delete().eq("id", playerId);
+    // Το trigger roster_size_limit στη βάση (επιβεβαιωμένο bug fix: επιβάλλει το όριο
+    // ατομικά, ακόμα κι αν δύο προσθήκες έρθουν σχεδόν ταυτόχρονα) στέλνει ήδη ένα
+    // ολοκληρωμένο, φιλικό μήνυμα — το δείχνουμε όπως είναι, χωρίς διπλό περιτύλιγμα.
+    if (entryError.message.includes("Η βασική σύνθεση επιτρέπει το πολύ")) {
+      return { ok: false, message: entryError.message };
+    }
     return { ok: false, message: `Αποτυχία προσθήκης στη σύνθεση: ${entryError.message}` };
   }
 
@@ -329,6 +350,42 @@ export async function removeRosterEntry(token: string, teamId: string | undefine
  * μια κανονική εξαγόμενη συνάρτηση είναι το ίδιο, αποδεδειγμένο μοτίβο που ήδη
  * δουλεύει παντού αλλού (π.χ. removeRosterEntry).
  */
+/**
+ * Αποθήκευση της σειράς της βασικής σύνθεσης ΜΑΖΙΚΑ, μετά από "Υποβολή Σύνθεσης"
+ * (επιβεβαιωμένο, μεγάλη αλλαγή: η μετακίνηση ↑/↓ γίνεται πλέον ελεύθερα σε τοπική
+ * κατάσταση στον browser — ΧΩΡΙΣ αποθήκευση σε κάθε κλικ όπως πριν — και αποθηκεύεται
+ * μόνο εδώ, μία φορά, όταν ο αρχηγός πατήσει Υποβολή μετά από επιτυχή Έλεγχο Σύνθεσης).
+ * orderedEntryIds: ΟΛΑ τα entry ids της ομάδας, με τη ΝΕΑ επιθυμητή σειρά (θέση 0 = 1η).
+ */
+export async function submitRosterOrder(token: string, teamId: string | undefined, orderedEntryIds: string[]) {
+  const supabase = createClient();
+  const team = await getTeamByToken(token, teamId);
+  assertRosterEditable(team);
+
+  const { data: existing } = await supabase.from("roster_entries").select("id").eq("team_id", team.id);
+  const existingIds = new Set((existing ?? []).map((e) => e.id));
+
+  // Ασφάλεια: όλα τα ids πρέπει να ανήκουν ΗΔΗ σε αυτή την ομάδα, και να είναι ακριβώς
+  // το ίδιο σύνολο (όχι λιγότερα/περισσότερα) — αλλιώς κάτι δεν είναι συγχρονισμένο.
+  if (orderedEntryIds.length !== existingIds.size || orderedEntryIds.some((id) => !existingIds.has(id))) {
+    throw new Error("Η σύνθεση έχει αλλάξει στο μεταξύ (π.χ. προσθήκη/αφαίρεση αθλητή) — ανανεώστε τη σελίδα και ξαναδοκιμάστε.");
+  }
+
+  // Δύο περάσματα: πρώτα σε προσωρινές τιμές (offset), μετά στις τελικές 1..N — αλλιώς
+  // το unique constraint (team_id, declared_order) μπλοκάρει ενδιάμεσες συγκρούσεις
+  // κατά την αναδιάταξη (π.χ. η 1η και η 2η θέση να ανταλλάξουν declared_order).
+  for (let i = 0; i < orderedEntryIds.length; i++) {
+    const { error } = await supabase.from("roster_entries").update({ declared_order: i + 1001 }).eq("id", orderedEntryIds[i]);
+    if (error) throw new Error(`Αποτυχία αποθήκευσης σειράς: ${error.message}`);
+  }
+  for (let i = 0; i < orderedEntryIds.length; i++) {
+    const { error } = await supabase.from("roster_entries").update({ declared_order: i + 1 }).eq("id", orderedEntryIds[i]);
+    if (error) throw new Error(`Αποτυχία αποθήκευσης σειράς: ${error.message}`);
+  }
+
+  revalidateCaptainPaths(token, teamId);
+}
+
 export async function moveRosterEntryUp(token: string, teamId: string | undefined, entryId: string) {
   return moveRosterEntry(token, teamId, entryId, "up");
 }

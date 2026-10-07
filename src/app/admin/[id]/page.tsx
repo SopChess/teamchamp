@@ -19,7 +19,7 @@ export default async function CompetitionPage({ params }: { params: { id: string
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, time_control, registration_deadline, entry_fee_amount, entry_fee_note, entry_fee_deadline, status, requires_certificate, organizer, category")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, audience_type, max_teams_per_club, announcement_url, venue_maps_url, chess_results_url, time_control, registration_deadline, roster_submission_deadline, entry_fee_amount, entry_fee_note, entry_fee_deadline, status, requires_certificate, organizer, category, season, team_count")
     .eq("id", params.id)
     .single();
 
@@ -60,6 +60,15 @@ export default async function CompetitionPage({ params }: { params: { id: string
           name="organizer"
           defaultValue={competition?.organizer ?? ""}
           placeholder="π.χ. Σκακιστικός Όμιλος Πολίχνης"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Αγωνιστική περίοδος
+        <input
+          name="season"
+          defaultValue={competition?.season ?? ""}
+          placeholder="π.χ. 2026-2027"
           className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
       </label>
@@ -159,6 +168,16 @@ export default async function CompetitionPage({ params }: { params: { id: string
           Αλλαγή εδώ δεν επηρεάζει ομάδες που έχουν ήδη δηλωθεί.
         </span>
       </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Αριθμός ομάδων (αναμενόμενος/μέγιστος για όλη τη διοργάνωση)
+        <input
+          name="team_count"
+          type="number"
+          min={1}
+          defaultValue={competition?.team_count ?? ""}
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+      </label>
       {/* Μόνο για "Ομάδες μέλη ΕΣΟ" — επιβεβαιωμένο: δεν έχει νόημα για ελεύθερη επωνυμία,
           οπότε δεν εμφανίζεται καν αντί να φαίνεται πάντα χωρίς να εφαρμόζεται. */}
       {(competition?.audience_type ?? "eso_club") === "eso_club" && (
@@ -221,6 +240,22 @@ export default async function CompetitionPage({ params }: { params: { id: string
           defaultValue={competition?.registration_deadline ? new Date(competition.registration_deadline).toISOString().slice(0, 16) : ""}
           className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
         />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Προθεσμία κατάθεσης βασικών συνθέσεων
+        <input
+          name="roster_submission_deadline"
+          type="datetime-local"
+          defaultValue={
+            competition?.roster_submission_deadline
+              ? new Date(competition.roster_submission_deadline).toISOString().slice(0, 16)
+              : ""
+          }
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2"
+        />
+        <span className="text-xs text-muted">
+          Προαιρετική — αν μείνει κενή, η σύνθεση κλειδώνει με την προθεσμία εγγραφών, όπως πάντα.
+        </span>
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="requires_certificate" defaultChecked={competition?.requires_certificate ?? true} />

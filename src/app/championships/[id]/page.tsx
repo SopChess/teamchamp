@@ -12,6 +12,7 @@ import {
   type TiebreakKey,
 } from "@/lib/standings/standings";
 import { teamDisplayName } from "@/lib/teams/teams";
+import { TOURNAMENT_STATUS_LABEL, effectiveTournamentStatus, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -27,7 +28,7 @@ export default async function ChampionshipPage({ params }: { params: { id: strin
 
   const { data: c } = await supabase
     .from("competitions")
-    .select("id, name, format, rounds_count, starts_on, ends_on, venue")
+    .select("id, name, format, rounds_count, starts_on, ends_on, venue, season, status, registration_deadline, team_count")
     .eq("id", params.id)
     .maybeSingle();
   if (!c) notFound();
@@ -104,15 +105,46 @@ export default async function ChampionshipPage({ params }: { params: { id: strin
     ["Ημερομηνίες", [c.starts_on, c.ends_on].filter(Boolean).join(" – ") || null],
   ];
 
+  // Κουτάκια στατιστικών + ετικέτες κατάστασης (επιβεβαιωμένο, σχεδιαστική αναβάθμιση
+  // της δημόσιας σελίδας) — αριθμός ομάδων (ρητά ορισμένος αν υπάρχει, αλλιώς μετρημένος
+  // από τις πραγματικά εγγεγραμμένες), αναμετρήσεις χωρίς τις bye, τρέχων γύρος, και η
+  // ίδια κατάσταση διοργάνωσης που ήδη δείχνει το admin (καμία νέα λογική κατάστασης).
+  const teamCount = c.team_count ?? (teams ?? []).length;
+  const matchCount = (pairings ?? []).filter((p) => p.team_b_id).length;
+  const currentRoundNumber = rounds?.[0]?.round_number ?? null;
+  const statusLabel =
+    TOURNAMENT_STATUS_LABEL[effectiveTournamentStatus((c.status as TournamentStatus) ?? "open", c.registration_deadline)];
+
   return (
     <div className="min-h-screen px-5 py-10 max-w-xl mx-auto flex flex-col gap-8">
       <AutoRefresh seconds={5} />
 
       <div>
         <BackHome />
-        <h1 className="font-serif font-bold text-2xl mt-3">{c.name}</h1>
+        {c.season && <div className="text-xs text-muted mt-3">Αγωνιστική περίοδος {c.season}</div>}
+        <h1 className={`font-serif font-bold text-2xl ${c.season ? "mt-1" : "mt-3"}`}>{c.name}</h1>
         <div className="text-xs text-muted mt-1">
           {info.filter(([, v]) => v).map(([l, v]) => `${l}: ${v}`).join(" · ")}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-infoBg text-infoText">{statusLabel}</span>
+          {currentRoundNumber != null && (
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-okBg text-okText">
+              Γύρος {currentRoundNumber}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="bg-card border border-cardBorder rounded-xl px-4 py-3">
+            <div className="text-xs text-muted">Ομάδες</div>
+            <div className="text-xl font-bold mt-0.5">{teamCount}</div>
+          </div>
+          <div className="bg-card border border-cardBorder rounded-xl px-4 py-3">
+            <div className="text-xs text-muted">Αναμετρήσεις</div>
+            <div className="text-xl font-bold mt-0.5">{matchCount}</div>
+          </div>
         </div>
       </div>
 

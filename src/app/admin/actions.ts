@@ -62,6 +62,8 @@ export async function createCompetition(formData: FormData) {
   const chessResultsUrl = String(formData.get("chess_results_url") ?? "").trim() || null;
   const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
   const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
+  const rosterSubmissionDeadlineRaw = String(formData.get("roster_submission_deadline") ?? "").trim();
+  const rosterSubmissionDeadline = rosterSubmissionDeadlineRaw ? new Date(rosterSubmissionDeadlineRaw).toISOString() : null;
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
   const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
   const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
@@ -76,6 +78,9 @@ export async function createCompetition(formData: FormData) {
   const category: TournamentCategory = isTournamentCategory(categoryRaw) ? categoryRaw : "other";
   const matchBoardCountRaw = String(formData.get("match_board_count") ?? "").trim();
   const matchBoardCount = matchBoardCountRaw && Number.isFinite(Number(matchBoardCountRaw)) ? Number(matchBoardCountRaw) : null;
+  const season = String(formData.get("season") ?? "").trim() || null;
+  const teamCountRaw = String(formData.get("team_count") ?? "").trim();
+  const teamCount = teamCountRaw && Number.isFinite(Number(teamCountRaw)) ? Number(teamCountRaw) : null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -96,6 +101,7 @@ export async function createCompetition(formData: FormData) {
       venue_maps_url: venueMapsUrl,
       chess_results_url: chessResultsUrl,
       registration_deadline: registrationDeadline,
+      roster_submission_deadline: rosterSubmissionDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
       time_control: timeControl,
@@ -104,6 +110,8 @@ export async function createCompetition(formData: FormData) {
       requires_certificate: requiresCertificate,
       organizer,
       category,
+      season,
+      team_count: teamCount,
     })
     .select("id")
     .single();
@@ -139,6 +147,8 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const chessResultsUrl = String(formData.get("chess_results_url") ?? "").trim() || null;
   const registrationDeadlineRaw = String(formData.get("registration_deadline") ?? "");
   const registrationDeadline = registrationDeadlineRaw ? new Date(registrationDeadlineRaw).toISOString() : null;
+  const rosterSubmissionDeadlineRaw = String(formData.get("roster_submission_deadline") ?? "").trim();
+  const rosterSubmissionDeadline = rosterSubmissionDeadlineRaw ? new Date(rosterSubmissionDeadlineRaw).toISOString() : null;
   const entryFeeAmountRaw = String(formData.get("entry_fee_amount") ?? "").trim();
   const entryFeeAmount = entryFeeAmountRaw && Number.isFinite(Number(entryFeeAmountRaw)) ? Number(entryFeeAmountRaw) : null;
   const entryFeeNote = String(formData.get("entry_fee_note") ?? "").trim() || null;
@@ -153,6 +163,9 @@ export async function updateCompetition(competitionId: string, formData: FormDat
   const category: TournamentCategory = isTournamentCategory(categoryRaw) ? categoryRaw : "other";
   const matchBoardCountRaw = String(formData.get("match_board_count") ?? "").trim();
   const matchBoardCount = matchBoardCountRaw && Number.isFinite(Number(matchBoardCountRaw)) ? Number(matchBoardCountRaw) : null;
+  const season = String(formData.get("season") ?? "").trim() || null;
+  const teamCountRaw = String(formData.get("team_count") ?? "").trim();
+  const teamCount = teamCountRaw && Number.isFinite(Number(teamCountRaw)) ? Number(teamCountRaw) : null;
 
   if (!name) {
     throw new Error("Το όνομα διοργάνωσης είναι υποχρεωτικό.");
@@ -173,6 +186,7 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       venue_maps_url: venueMapsUrl,
       chess_results_url: chessResultsUrl,
       registration_deadline: registrationDeadline,
+      roster_submission_deadline: rosterSubmissionDeadline,
       entry_fee_amount: entryFeeAmount,
       entry_fee_note: entryFeeNote,
       time_control: timeControl,
@@ -181,6 +195,8 @@ export async function updateCompetition(competitionId: string, formData: FormDat
       requires_certificate: requiresCertificate,
       organizer,
       category,
+      season,
+      team_count: teamCount,
     })
     .eq("id", competitionId);
 

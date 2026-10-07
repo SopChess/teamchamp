@@ -54,7 +54,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const { data: team } = await supabase
     .from("teams")
     .select(
-      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate, registration_deadline, starts_on)"
+      "id, competition_id, status, roster_lock_deadline, roster_locked, clubs_schools(name), attendance_certificate_original_name, attendance_certificate_uploaded_at, entry_fee_status, entry_fee_method, competitions(entry_fee_amount, entry_fee_note, requires_certificate, registration_deadline, roster_submission_deadline, starts_on)"
     )
     .eq("id", teamId)
     .maybeSingle();
@@ -95,12 +95,12 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
   const initialAssignments =
     roundRules && roundRoster ? computeDefaultAssignment(roundRules, roundRoster.roster, roundRoster.players) : [];
 
-  // Το ΜΟΝΟ κριτήριο κλειδώματος είναι η προθεσμία εγγραφών της διοργάνωσης
-  // (επιβεβαιωμένο) — ίδια λογική με το assertRosterEditable στον server. Καμία
-  // επιρροή από χειροκίνητο κλείδωμα admin ή παλιό ανά-ομάδα πεδίο πλέον.
-  const registrationDeadline = competitionFee?.registration_deadline ?? null;
-  const registrationDeadlinePassed = !!registrationDeadline && new Date(registrationDeadline) < new Date();
-  const editable = !registrationDeadlinePassed;
+  // Κριτήριο κλειδώματος: η ξεχωριστή προθεσμία κατάθεσης σύνθεσης αν έχει οριστεί,
+  // αλλιώς η προθεσμία εγγραφών (επιβεβαιωμένο) — ίδια λογική με το assertRosterEditable
+  // στον server (rosterDeadlineOf). Καμία επιρροή από χειροκίνητο κλείδωμα admin πλέον.
+  const rosterDeadline = competitionFee?.roster_submission_deadline ?? competitionFee?.registration_deadline ?? null;
+  const rosterDeadlinePassed = !!rosterDeadline && new Date(rosterDeadline) < new Date();
+  const editable = !rosterDeadlinePassed;
 
   const boundAddPlayer = addPlayerToRoster.bind(null, params.token, teamId);
   const boundRemove = removeRosterEntry.bind(null, params.token, teamId);
@@ -135,11 +135,11 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     <>
       <div className="bg-card border border-cardBorder rounded-xl px-4 py-3 flex items-center justify-between">
         <div>
-          {registrationDeadline && (
+          {rosterDeadline && (
             <>
               <div className="text-xs text-muted">Επεξεργασία σύνθεσης έως</div>
               <div className="text-sm font-semibold mt-0.5">
-                {new Date(registrationDeadline).toLocaleString("el-GR")}
+                {new Date(rosterDeadline).toLocaleString("el-GR")}
               </div>
             </>
           )}
@@ -186,7 +186,7 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
     </>
   );
 
-  const lockedReason = "Η προθεσμία εγγραφών έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.";
+  const lockedReason = "Η προθεσμία κατάθεσης σύνθεσης έχει λήξει — δεν επιτρέπονται πλέον αλλαγές στη σύνθεση.";
 
   const athletesTabContent = (
     <>
@@ -203,6 +203,8 @@ export default async function CaptainTeamView({ token, teamId }: { token: string
           player: playerOf(entry as unknown as { players: unknown }),
         }))}
         rosterSize={rules?.roster_size ?? null}
+        rules={rules ?? null}
+        referenceYear={referenceYear}
         editableByDeadline={editable}
         lockedReason={lockedReason}
         token={params.token}

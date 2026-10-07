@@ -23,6 +23,8 @@ describe("CreateTournamentForm — πίσω από κουμπί (επιβεβα�
     expect(screen.getByPlaceholderText("π.χ. 15΄+10΄΄/κίνηση")).toBeInTheDocument();
     expect(screen.getByText("Προθεσμία πληρωμής παραβόλου")).toBeInTheDocument();
     expect(screen.getByText("Απαιτείται βεβαίωση φοίτησης")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("π.χ. 2026-2027")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("π.χ. 12")).toBeInTheDocument();
   });
 
   it("κλικ στην Ακύρωση κλείνει ξανά τη φόρμα", async () => {

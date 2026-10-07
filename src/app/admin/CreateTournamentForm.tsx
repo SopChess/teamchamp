@@ -49,6 +49,14 @@ export default function CreateTournamentForm({ action }: { action: (formData: Fo
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted">
+        Αγωνιστική περίοδος
+        <input
+          name="season"
+          placeholder="π.χ. 2026-2027"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Κατηγορία διοργάνωσης
         <select name="category" defaultValue="other" className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm">
           {TOURNAMENT_CATEGORIES.map((c) => (
@@ -104,6 +112,16 @@ export default function CreateTournamentForm({ action }: { action: (formData: Fo
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted">
+        Αριθμός ομάδων (αναμενόμενος/μέγιστος για όλη τη διοργάνωση)
+        <input
+          name="team_count"
+          type="number"
+          min={1}
+          placeholder="π.χ. 12"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
         Μέγιστες ομάδες ανά σύλλογο (μόνο για «Ομάδες μέλη ΕΣΟ»)
         <input
           name="max_teams_per_club"
@@ -155,6 +173,17 @@ export default function CreateTournamentForm({ action }: { action: (formData: Fo
           type="datetime-local"
           className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
         />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-muted">
+        Προθεσμία κατάθεσης βασικών συνθέσεων
+        <input
+          name="roster_submission_deadline"
+          type="datetime-local"
+          className="w-full bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
+        />
+        <span className="text-xs text-muted">
+          Προαιρετική — αν μείνει κενή, η σύνθεση κλειδώνει με την προθεσμία εγγραφών, όπως πάντα.
+        </span>
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="requires_certificate" defaultChecked />

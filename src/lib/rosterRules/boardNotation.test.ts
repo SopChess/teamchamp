@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { referenceYearOf, describeConstraintShort, describeConstraintsShort } from "./boardNotation";
+import { referenceYearOf, describeConstraintShort, describeConstraintsShort, ordinalGreek, positionLabel } from "./boardNotation";
 
 describe("referenceYearOf", () => {
   it("χρησιμοποιεί το έτος έναρξης του τουρνουά, όχι το σημερινό (επιβεβαιωμένο)", () => {
@@ -58,5 +58,27 @@ describe("describeConstraintsShort", () => {
 
   it("καμία συνθήκη → κενό αποτέλεσμα", () => {
     expect(describeConstraintsShort([], 2026)).toBe("");
+  });
+});
+
+describe("ordinalGreek", () => {
+  it('παράγει "1η", "2η", "3η" κ.λπ.', () => {
+    expect(ordinalGreek(1)).toBe("1η");
+    expect(ordinalGreek(2)).toBe("2η");
+    expect(ordinalGreek(6)).toBe("6η");
+  });
+});
+
+describe("positionLabel — πλήρης ετικέτα θέσης (επιβεβαιωμένο: βασική σύνθεση, όχι μόνο πίνακας)", () => {
+  it('"1η (U16)" όταν υπάρχει όρος', () => {
+    expect(positionLabel(1, [{ type: "birth_year_from", value: "2010" }], 2026)).toBe("1η (U16)");
+  });
+
+  it('"2η (F)" για φύλο', () => {
+    expect(positionLabel(2, [{ type: "gender", value: "F" }], 2026)).toBe("2η (F)");
+  });
+
+  it('"3η (Γενική)" όταν ΔΕΝ υπάρχει κανένας όρος — ποτέ κενή παρένθεση', () => {
+    expect(positionLabel(3, [], 2026)).toBe("3η (Γενική)");
   });
 });

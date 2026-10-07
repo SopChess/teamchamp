@@ -49,3 +49,18 @@ export function describeConstraintShort(c: BoardConstraint, referenceYear: numbe
 export function describeConstraintsShort(constraints: BoardConstraint[], referenceYear: number): string {
   return constraints.map((c) => describeConstraintShort(c, referenceYear)).filter(Boolean).join(" · ");
 }
+
+/** "1η", "2η", "3η" … — τακτικό αριθμητικό θέσης (επιβεβαιωμένο, βασική σύνθεση). */
+export function ordinalGreek(position: number): string {
+  return `${position}η`;
+}
+
+/**
+ * "1η (U16)", "2η (F)", "3η (Γενική)" — πλήρης ετικέτα θέσης με σημειογραφία σε παρένθεση
+ * (επιβεβαιωμένο: η λίστα βασικής σύνθεσης, όχι μόνο ο πίνακας κάλυψης). "Γενική" όταν
+ * δεν υπάρχει κανένας όρος — ΠΟΤΕ κενή παρένθεση.
+ */
+export function positionLabel(position: number, constraints: BoardConstraint[], referenceYear: number): string {
+  const short = describeConstraintsShort(constraints, referenceYear);
+  return `${ordinalGreek(position)} (${short || "Γενική"})`;
+}

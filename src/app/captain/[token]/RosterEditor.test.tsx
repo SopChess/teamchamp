@@ -3,33 +3,42 @@ import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { RosterRules } from "@/lib/rosterRules/types";
 
-// Το RosterEditor εμφανίζει PlayerSearch όταν είναι σε επεξεργασία, το οποίο καλεί useRouter()
-// — χρειάζεται πραγματικό Next.js App Router context που δεν υπάρχει σε απλό jsdom render.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
-// Το RosterEditor καλεί πλέον ΑΠΕΥΘΕΙΑΣ τα server actions μετακίνησης (επιβεβαιωμένο, πιο
-// αξιόπιστο μοτίβο) αντί να τα παίρνει ως props — τα πλαστογραφούμε εδώ. vi.hoisted() χρειάζεται
-// γιατί το vi.mock() ανεβαίνει πριν από κανονικές δηλώσεις const στην κορυφή του αρχείου.
-const { moveRosterEntryUp, moveRosterEntryDown } = vi.hoisted(() => ({
-  moveRosterEntryUp: vi.fn(async () => undefined),
-  moveRosterEntryDown: vi.fn(async () => undefined),
+// ΜΕΓΑΛΗ ΑΛΛΑΓΗ (επιβεβαιωμένο): η σειρά αποθηκεύεται πλέον ΜΟΝΟ με submitRosterOrder,
+// μετά από Έλεγχο Σύνθεσης — όχι πια σε κάθε κλικ ↑/↓.
+const { submitRosterOrder } = vi.hoisted(() => ({
+  submitRosterOrder: vi.fn(async () => undefined),
 }));
-vi.mock("./actions", () => ({ moveRosterEntryUp, moveRosterEntryDown }));
+vi.mock("./actions", () => ({ submitRosterOrder }));
 
 import RosterEditor from "./RosterEditor";
 
 afterEach(cleanup);
 
 const entries = [
-  { id: "e1", declared_order: 1, player: { last_name: "Παπάς", first_name: "Γιώργος", rating_national: 1200, gender: "M" } },
-  { id: "e2", declared_order: 2, player: { last_name: "Νικολάου", first_name: "Μαρία", rating_national: 1100, gender: "F" } },
+  { id: "e1", declared_order: 1, player: { id: "p1", last_name: "Παπάς", first_name: "Γιώργος", rating_national: 1200, gender: "M", birth_date: "2010-01-01" } },
+  { id: "e2", declared_order: 2, player: { id: "p2", last_name: "Νικολάου", first_name: "Μαρία", rating_national: 1100, gender: "F", birth_date: "2012-01-01" } },
 ];
+
+const rules: RosterRules = {
+  assignment_mode: "fixed_category",
+  roster_size: 6,
+  match_board_count: 1,
+  board_rules: [
+    { board: 1, constraints: [{ type: "gender", value: "F" }] },
+    { board: 2, constraints: [] },
+  ],
+};
 
 function baseProps(overrides: Partial<React.ComponentProps<typeof RosterEditor>> = {}) {
   return {
     entries,
     rosterSize: 6,
+    rules,
+    referenceYear: 2026,
     editableByDeadline: true,
     token: "tok1",
     teamId: "team1",
@@ -44,101 +53,93 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof RosterEditor>>
 }
 
 describe("RosterEditor — καθαρή προβολή από προεπιλογή", () => {
-  it("δείχνει τη λίστα ΧΩΡΙΣ κουμπιά μετακίνησης/αφαίρεσης", () => {
+  it("δείχνει τη λίστα ΧΩΡΙΣ κουμπιά μετακίνησης/αφαίρεσης, με τη σημειογραφία θέσης", () => {
     render(<RosterEditor {...baseProps()} />);
     expect(screen.getByText(/Παπάς/)).toBeInTheDocument();
+    expect(screen.getByText("1η (F)")).toBeInTheDocument(); // η ετικέτα δείχνει τον όρο ΤΗΣ ΘΕΣΗΣ (board 1 = F), ανεξάρτητα από το ότι ο Παπάς (M) δεν ταιριάζει ακόμα
     expect(screen.queryByLabelText("Μετακίνηση πάνω")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Αφαίρεση")).not.toBeInTheDocument();
   });
 
-  it("δεν δείχνει αναζήτηση/χειροκίνητη φόρμα σε προβολή", () => {
+  it("δείχνει τη διαχωριστική ετικέτα Βασικοί/Αναπληρωματικοί στο σωστό σημείο (match_board_count=1)", () => {
     render(<RosterEditor {...baseProps()} />);
-    expect(screen.queryByText("Χειροκίνητη προσθήκη (αν δεν βρίσκεται στο μητρώο ΕΣΟ) · λατινικά")).not.toBeInTheDocument();
-  });
-
-  it("το κουμπί λέει «Επεξεργασία Βασικής Σύνθεσης»", () => {
-    render(<RosterEditor {...baseProps()} />);
-    expect(screen.getByText("Επεξεργασία Βασικής Σύνθεσης")).toBeInTheDocument();
+    expect(screen.getByText("Βασικοί (1 σκακιέρες)")).toBeInTheDocument();
+    expect(screen.getByText("Αναπληρωματικοί")).toBeInTheDocument();
   });
 });
 
-describe("RosterEditor — εναλλαγή σε επεξεργασία", () => {
-  it("κλικ στο Επεξεργασία εμφανίζει κουμπιά μετακίνησης/αφαίρεσης ΚΑΙ τη φόρμα χειροκίνητης προσθήκης", async () => {
+describe("RosterEditor — επεξεργασία, μετακίνηση ΤΟΠΙΚΑ χωρίς αποθήκευση", () => {
+  it("κλικ στο ↑/↓ αλλάζει ΜΟΝΟ την τοπική σειρά — καμία κλήση submitRosterOrder", async () => {
     const user = userEvent.setup();
     render(<RosterEditor {...baseProps()} />);
-    await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
-    expect(screen.getAllByLabelText("Μετακίνηση πάνω").length).toBeGreaterThan(0);
-    expect(screen.getAllByLabelText("Αφαίρεση").length).toBeGreaterThan(0);
-    expect(screen.getByText("Χειροκίνητη προσθήκη (αν δεν βρίσκεται στο μητρώο ΕΣΟ) · λατινικά")).toBeInTheDocument();
-  });
-
-  it("κλικ στο Αποθήκευση επιστρέφει στην καθαρή προβολή — ΚΑΜΙΑ ενέργεια βάσης (δεν καλείται τίποτα)", async () => {
-    const user = userEvent.setup();
-    const props = baseProps();
-    render(<RosterEditor {...props} />);
-    await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
-    await user.click(screen.getByText("Αποθήκευση"));
-    expect(screen.queryByLabelText("Αφαίρεση")).not.toBeInTheDocument();
-    expect(moveRosterEntryUp).not.toHaveBeenCalled();
-    expect(props.remove).not.toHaveBeenCalled();
-  });
-
-  it("κλικ στο ✕ καλεί remove με το σωστό entryId — ΧΩΡΙΣ να χρειάζεται \"υποβολή\"", async () => {
-    const user = userEvent.setup();
-    const props = baseProps();
-    render(<RosterEditor {...props} />);
-    await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
-    const removeButtons = screen.getAllByLabelText("Αφαίρεση");
-    await user.click(removeButtons[0]!);
-    await waitFor(() => expect(props.remove).toHaveBeenCalledWith("e1"));
-  });
-
-  it("κλικ στο ↑/↓ καλεί ΑΠΕΥΘΕΙΑΣ το server action με token, teamId, entryId", async () => {
-    const user = userEvent.setup();
-    const props = baseProps();
-    render(<RosterEditor {...props} />);
     await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
     await user.click(screen.getAllByLabelText("Μετακίνηση κάτω")[0]!);
-    await waitFor(() => expect(moveRosterEntryDown).toHaveBeenCalledWith("tok1", "team1", "e1"));
+    // Η θέση 1 είναι πλέον η Νικολάου, η θέση 2 ο Παπάς — οπτική αλλαγή σειράς.
+    const rows = screen.getAllByText(/Παπάς|Νικολάου/);
+    expect(rows[0]!.textContent).toContain("Νικολάου");
+    expect(submitRosterOrder).not.toHaveBeenCalled();
   });
 
-  it("κλικ στο ↑ καλεί ΑΠΕΥΘΕΙΑΣ το server action μετακίνησης πάνω", async () => {
+  it("κλικ στο ✕ καλεί remove αμέσως — η αφαίρεση παραμένει άμεση, ανεξάρτητη", async () => {
     const user = userEvent.setup();
     const props = baseProps();
     render(<RosterEditor {...props} />);
     await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
-    await user.click(screen.getAllByLabelText("Μετακίνηση πάνω")[1]!); // 2ος αθλητής, ↑ ενεργό
-    await waitFor(() => expect(moveRosterEntryUp).toHaveBeenCalledWith("tok1", "team1", "e2"));
+    await user.click(screen.getAllByLabelText("Αφαίρεση")[0]!);
+    await waitFor(() => expect(props.remove).toHaveBeenCalledWith("e1"));
   });
 });
 
-describe("RosterEditor — ΚΑΜΙΑ μόνιμη κλειδαριά από «υποβολή», μόνο η προθεσμία", () => {
-  it("ΔΕΝ υπάρχει πουθενά κουμπί «Υποβολή Σύνθεσης»", async () => {
+describe("RosterEditor — Έλεγχος Σύνθεσης / Υποβολή Σύνθεσης (επιβεβαιωμένο, νέα λογική)", () => {
+  it('"Υποβολή Σύνθεσης" είναι ΑΝΕΝΕΡΓΗ πριν από οποιονδήποτε Έλεγχο', async () => {
     const user = userEvent.setup();
     render(<RosterEditor {...baseProps()} />);
-    expect(screen.queryByText(/Υποβολή Σύνθεσης/)).not.toBeInTheDocument();
     await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
-    expect(screen.queryByText(/Υποβολή Σύνθεσης/)).not.toBeInTheDocument();
+    const submitBtn = screen.getByText("Υποβολή Σύνθεσης") as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(true);
   });
 
-  it("όταν η προθεσμία έχει λήξει, το κουμπί Επεξεργασία είναι ΟΡΑΤΟ αλλά ΑΝΕΝΕΡΓΟ, με εξήγηση", () => {
-    render(<RosterEditor {...baseProps({ editableByDeadline: false, lockedReason: "Η προθεσμία εγγραφών έχει λήξει." })} />);
-    const btn = screen.getByText("Επεξεργασία Βασικής Σύνθεσης") as HTMLButtonElement;
-    expect(btn).toBeInTheDocument();
-    expect(btn.disabled).toBe(true);
-    expect(screen.getByText("Η προθεσμία εγγραφών έχει λήξει.")).toBeInTheDocument();
-  });
-
-  it("κλικ σε ανενεργό κουμπί ΔΕΝ ανοίγει επεξεργασία", async () => {
+  it("Έλεγχος με λάθος τοποθέτηση (board 1 θέλει F, έχει M) → κόκκινο, Υποβολή παραμένει ανενεργή", async () => {
     const user = userEvent.setup();
-    render(<RosterEditor {...baseProps({ editableByDeadline: false, lockedReason: "Κλειδωμένο." })} />);
+    render(<RosterEditor {...baseProps()} />);
     await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
-    expect(screen.queryByLabelText("Αφαίρεση")).not.toBeInTheDocument();
+    await user.click(screen.getByText("Έλεγχος Σύνθεσης"));
+    expect(screen.getByText(/δεν πληροί τον όρο αυτής της σκακιέρας/)).toBeInTheDocument();
+    const submitBtn = screen.getByText("Υποβολή Σύνθεσης") as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(true);
   });
 
-  it("διαφορετικό μήνυμα όταν το κλείδωμα είναι από τη διοργάνωση, όχι την προθεσμία", () => {
-    render(<RosterEditor {...baseProps({ editableByDeadline: false, lockedReason: "Η βασική σύνθεση έχει κλειδωθεί από τη διοργάνωση." })} />);
-    expect(screen.getByText("Η βασική σύνθεση έχει κλειδωθεί από τη διοργάνωση.")).toBeInTheDocument();
+  it("μετά από μετακίνηση ώστε η F να πάει στη θέση 1, ο Έλεγχος βγάζει όλα πράσινα και η Υποβολή ενεργοποιείται, καλώντας submitRosterOrder με τη σωστή σειρά", async () => {
+    const user = userEvent.setup();
+    render(<RosterEditor {...baseProps()} />);
+    await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
+    await user.click(screen.getAllByLabelText("Μετακίνηση κάτω")[0]!); // Νικολάου (F) πάει στη θέση 1
+    await user.click(screen.getByText("Έλεγχος Σύνθεσης"));
+    expect(screen.queryByText(/δεν πληροί τον όρο/)).not.toBeInTheDocument();
+    const submitBtn = screen.getByText("Υποβολή Σύνθεσης") as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(false);
+    await user.click(submitBtn);
+    await waitFor(() => expect(submitRosterOrder).toHaveBeenCalledWith("tok1", "team1", ["e2", "e1"]));
+  });
+
+  it("μετακίνηση ΜΕΤΑ από επιτυχή Έλεγχο ακυρώνει το αποτέλεσμα — η Υποβολή ξαναγίνεται ανενεργή", async () => {
+    const user = userEvent.setup();
+    render(<RosterEditor {...baseProps()} />);
+    await user.click(screen.getByText("Επεξεργασία Βασικής Σύνθεσης"));
+    await user.click(screen.getAllByLabelText("Μετακίνηση κάτω")[0]!);
+    await user.click(screen.getByText("Έλεγχος Σύνθεσης"));
+    expect((screen.getByText("Υποβολή Σύνθεσης") as HTMLButtonElement).disabled).toBe(false);
+    await user.click(screen.getAllByLabelText("Μετακίνηση πάνω")[1]!); // ξαναγυρίζει πίσω
+    expect((screen.getByText("Υποβολή Σύνθεσης") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("RosterEditor — κλείδωμα από προθεσμία", () => {
+  it("όταν η προθεσμία έχει λήξει, το κουμπί Επεξεργασία είναι ΟΡΑΤΟ αλλά ΑΝΕΝΕΡΓΟ, με εξήγηση", () => {
+    render(<RosterEditor {...baseProps({ editableByDeadline: false, lockedReason: "Η προθεσμία έχει λήξει." })} />);
+    const btn = screen.getByText("Επεξεργασία Βασικής Σύνθεσης") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(screen.getByText("Η προθεσμία έχει λήξει.")).toBeInTheDocument();
   });
 });
 
