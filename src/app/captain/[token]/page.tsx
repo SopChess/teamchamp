@@ -41,7 +41,7 @@ export default async function CaptainRoot({
   searchParams,
 }: {
   params: { token: string };
-  searchParams?: { athleteIssues?: string };
+  searchParams?: { athleteIssues?: string | string[] };
 }) {
   const supabase = createClient();
 
@@ -49,12 +49,15 @@ export default async function CaptainRoot({
   // bug fix: ο έλεγχος satisfiesAnyBoard γινόταν ήδη σωστά στο backend (ο αθλητής ΔΕΝ
   // καταχωρούνταν), αλλά το μήνυμα ταξίδευε σε παράμετρο URL που ΚΑΝΕΝΑ σημείο της
   // εφαρμογής δεν διάβαζε ποτέ — ο υπεύθυνος δεν μάθαινε ποτέ γιατί λείπει κάποιος.
-  const athleteIssuesBanner = searchParams?.athleteIssues ? (
+  // Το Next.js μπορεί τεχνικά να δώσει πίνακα αντί για string — χειρίζεται ρητά εδώ.
+  const athleteIssuesRaw = searchParams?.athleteIssues;
+  const athleteIssuesText = Array.isArray(athleteIssuesRaw) ? athleteIssuesRaw.join(" · ") : athleteIssuesRaw;
+  const athleteIssuesBanner = athleteIssuesText ? (
     <div className="bg-pendingBg border border-pendingText/30 rounded-xl px-4 py-3">
       <div className="text-sm font-semibold text-pendingText mb-1">
         Κάποιοι αθλητές ΔΕΝ προστέθηκαν στη βασική σύνθεση:
       </div>
-      <p className="text-xs text-pendingText">{searchParams.athleteIssues}</p>
+      <p className="text-xs text-pendingText">{athleteIssuesText}</p>
     </div>
   ) : null;
 
