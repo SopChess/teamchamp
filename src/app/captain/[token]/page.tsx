@@ -36,8 +36,27 @@ function compName(t: TeamRef): string {
  *    να κρύψει).
  *  - ΝΕΟ link (captain_accounts): όλα τα τουρνουά του υπευθύνου, ομαδοποιημένα.
  */
-export default async function CaptainRoot({ params }: { params: { token: string } }) {
+export default async function CaptainRoot({
+  params,
+  searchParams,
+}: {
+  params: { token: string };
+  searchParams?: { athleteIssues?: string };
+}) {
   const supabase = createClient();
+
+  // Μήνυμα για αθλητές που ΔΕΝ προστέθηκαν κατά την εγγραφή της ομάδας — επιβεβαιωμένο
+  // bug fix: ο έλεγχος satisfiesAnyBoard γινόταν ήδη σωστά στο backend (ο αθλητής ΔΕΝ
+  // καταχωρούνταν), αλλά το μήνυμα ταξίδευε σε παράμετρο URL που ΚΑΝΕΝΑ σημείο της
+  // εφαρμογής δεν διάβαζε ποτέ — ο υπεύθυνος δεν μάθαινε ποτέ γιατί λείπει κάποιος.
+  const athleteIssuesBanner = searchParams?.athleteIssues ? (
+    <div className="bg-pendingBg border border-pendingText/30 rounded-xl px-4 py-3">
+      <div className="text-sm font-semibold text-pendingText mb-1">
+        Κάποιοι αθλητές ΔΕΝ προστέθηκαν στη βασική σύνθεση:
+      </div>
+      <p className="text-xs text-pendingText">{searchParams.athleteIssues}</p>
+    </div>
+  ) : null;
 
   const { data: legacy } = await supabase.from("teams").select("id, competitions(name)").eq("captain_access_token", params.token).maybeSingle();
   if (legacy) {
@@ -45,6 +64,7 @@ export default async function CaptainRoot({ params }: { params: { token: string 
     const name = Array.isArray(legacyComp) ? legacyComp[0]?.name : legacyComp?.name;
     return (
       <div className="min-h-screen px-6 py-10 max-w-sm md:max-w-xl mx-auto flex flex-col gap-4">
+        {athleteIssuesBanner}
         <TournamentPanel title={name ?? "Τουρνουά"} defaultOpen>
           <CaptainTeamView token={params.token} teamId={legacy.id} />
         </TournamentPanel>
@@ -73,6 +93,7 @@ export default async function CaptainRoot({ params }: { params: { token: string 
 
   return (
     <div className="min-h-screen px-6 py-10 max-w-sm md:max-w-xl mx-auto flex flex-col gap-6">
+      {athleteIssuesBanner}
       <div>
         <h1 className="font-serif font-bold text-2xl">Τα Τουρνουά σας</h1>
         <p className="text-xs text-muted mt-1">

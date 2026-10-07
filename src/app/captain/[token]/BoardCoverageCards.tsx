@@ -11,7 +11,10 @@ export default function BoardCoverageCards({ boards }: { boards: BoardCoverage[]
 
   return (
     <div className="bg-card border border-cardBorder rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+      {/* overflow-x-auto (επιβεβαιωμένο bug fix): χωρίς αυτό, ο πίνακας 4 στηλών ξεφεύγει
+          πλάγια σε στενές οθόνες κινητού αντί να κάνει δικό του οριζόντιο scroll. */}
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[420px]">
         <thead>
           <tr className="border-b border-cardBorder">
             <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Σκακιέρα</th>
@@ -49,6 +52,7 @@ export default function BoardCoverageCards({ boards }: { boards: BoardCoverage[]
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -188,7 +188,9 @@ export default function CompositionForm({ rules, roster, players, initial, submi
       <div>
         <div className="text-xs uppercase tracking-wide text-muted mb-2">Προεπισκόπηση σύνθεσης</div>
         <div className="bg-card border border-cardBorder rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+          {/* overflow-x-auto (επιβεβαιωμένο bug fix): βλ. BoardCoverageCards — ίδιο πρόβλημα. */}
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[420px]">
             <thead>
               <tr className="border-b border-cardBorder">
                 <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Σκακιέρα</th>
@@ -228,6 +230,7 @@ export default function CompositionForm({ rules, roster, players, initial, submi
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

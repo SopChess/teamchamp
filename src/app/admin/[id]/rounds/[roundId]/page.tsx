@@ -114,7 +114,10 @@ export default async function RoundMatchControlPage({ params }: { params: { id: 
               </div>
 
               {!isBye && (
-                <table className="w-full text-sm">
+                /* overflow-x-auto (επιβεβαιωμένο bug fix): βλ. BoardCoverageCards — ίδιο πρόβλημα,
+                   εδώ χειρότερο αφού 2 στήλες επαναλαμβάνουν ολόκληρα ονόματα ομάδων. */
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[480px]">
                   <thead>
                     <tr className="border-b border-cardBorder">
                       <th className="text-left font-semibold text-xs uppercase tracking-wide text-muted px-3 py-2">Σκακιέρα</th>
@@ -139,6 +142,7 @@ export default async function RoundMatchControlPage({ params }: { params: { id: 
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           );
