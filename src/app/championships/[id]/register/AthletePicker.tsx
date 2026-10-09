@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { DirectoryHit } from "@/lib/players/directory";
 import { validateBasicRoster } from "@/lib/rosterRules/basicRosterCheck";
-import type { RosterRules, Player, RosterEntry } from "@/lib/rosterRules/types";
+import { satisfiesBoardRule } from "@/lib/rosterRules/engine";
+import { positionLabel } from "@/lib/rosterRules/boardNotation";
+import type { RosterRules, Player, RosterEntry, BoardConstraint } from "@/lib/rosterRules/types";
 
 type Gender = "M" | "F";
 
@@ -25,6 +27,8 @@ interface Props {
   search: (epitheto: string, onoma: string) => Promise<DirectoryHit[]>;
   searchByNumber: (number: string) => Promise<DirectoryHit | null>;
   rules: Pick<RosterRules, "assignment_mode" | "roster_size" | "match_board_count" | "board_rules" | "reserve_count" | "one_player_per_category"> | null;
+  /** Έτος αναφοράς για τις ηλικιακές κατηγορίες (U16 κ.λπ.) — έτος έναρξης του τουρνουά. */
+  referenceYear: number;
 }
 
 /**
@@ -34,7 +38,7 @@ interface Props {
  * ίδια εμπειρία αναζήτησης με το Portal Αρχηγού (επώνυμο/όνομα ή ΑΜ, φύλο
  * υποχρεωτικό), αλλά χωρίς να γράφει τίποτα στη βάση μέχρι το τέλος.
  */
-export default function AthletePicker({ search, searchByNumber, rules }: Props) {
+export default function AthletePicker({ search, searchByNumber, rules, referenceYear }: Props) {
   const [epitheto, setEpitheto] = useState("");
   const [onoma, setOnoma] = useState("");
   const [number, setNumber] = useState("");
@@ -132,6 +136,38 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
     setAthletes((prev) => prev.filter((a) => a.key !== key));
   }
 
+  // Μετακίνηση ↑/↓ — ανταλλαγή θέσεων στην τοπική λίστα. Η σειρά της λίστας είναι
+  // και η σειρά καταχώρησης (1η, 2η…) που θα αποθηκευτεί με την εγγραφή.
+  function move(index: number, dir: "up" | "down") {
+    setAthletes((prev) => {
+      const other = dir === "up" ? index - 1 : index + 1;
+      if (other < 0 || other >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[other]] = [next[other]!, next[index]!];
+      return next;
+    });
+  }
+
+  const matchBoardCount = rules?.match_board_count ?? rules?.board_rules.length ?? null;
+  const constraintsFor = (position: number): BoardConstraint[] =>
+    rules?.board_rules.find((b) => b.board === position)?.constraints ?? [];
+
+  // Ενδεικτικός έλεγχος ανά γραμμή (για αθλητές καταλόγου έχουμε μόνο έτος γέννησης).
+  function rowStatus(a: PendingAthlete, position: number): "ok" | "bad" | "neutral" {
+    if (!rules || (matchBoardCount != null && position > matchBoardCount)) return "neutral";
+    const rule = rules.board_rules.find((b) => b.board === position);
+    if (!rule || rule.constraints.length === 0) return "ok";
+    const year = a.sub.match(/γεν\. (\d{4})/);
+    const player = {
+      id: a.key,
+      first_name: a.first_name ?? "",
+      last_name: a.last_name ?? "",
+      gender: a.gender,
+      birth_date: a.birth_date ?? (year ? `${year[1]}-06-15` : undefined),
+    } as Player;
+    return satisfiesBoardRule(player, rule) ? "ok" : "bad";
+  }
+
   // Ζωντανός έλεγχος (εκτίμηση): για αθλητές από τον κατάλογο δεν έχουμε ακριβή
   // ημερομηνία γέννησης εδώ (μόνο έτος) — ελέγχονται με το 15/6 του έτους ως
   // προσέγγιση. Ο πραγματικός έλεγχος με ακριβή στοιχεία γίνεται στον server.
@@ -159,21 +195,72 @@ export default function AthletePicker({ search, searchByNumber, rules }: Props) 
       <input type="hidden" name="athletes_json" value={JSON.stringify(athletes.map(({ key: _key, sub: _sub, label, ...rest }) => ({ ...rest, label })))} />
 
       {athletes.length > 0 && (
-        <ul className="flex flex-col divide-y divide-cardBorder border border-cardBorder rounded-lg overflow-hidden">
-          {athletes.map((a) => (
-            <li key={a.key} className="flex items-center justify-between px-3 py-2.5">
-              <div>
-                <div className="text-sm font-semibold">{a.label}</div>
-                <div className="text-xs text-muted">
-                  {a.gender === "F" ? "Γυναίκα" : "Άνδρας"} · {a.sub}
+        <div className="flex flex-col gap-2">
+          {matchBoardCount != null && (
+            <div className="text-[10px] uppercase tracking-wide text-muted font-semibold px-1">
+              Βασικοί ({matchBoardCount} σκακιέρες)
+            </div>
+          )}
+          {athletes.map((a, i) => {
+            const position = i + 1;
+            const status = rowStatus(a, position);
+            const showDivider = matchBoardCount != null && position === matchBoardCount + 1;
+            const bg =
+              status === "ok" ? "bg-okBg border-okText/30" : status === "bad" ? "bg-pendingBg border-pendingText/30" : "bg-panel border-cardBorder";
+            return (
+              <div key={a.key}>
+                {showDivider && (
+                  <div className="flex flex-col gap-1 mt-1 mb-1">
+                    <div className="h-px bg-cardBorder" />
+                    <div className="text-[10px] uppercase tracking-wide text-muted font-semibold px-1">Αναπληρωματικοί</div>
+                  </div>
+                )}
+                <div className={`flex items-center gap-2 border rounded-lg px-2.5 py-2 ${bg}`}>
+                  <span className="text-xs font-bold text-gold whitespace-nowrap flex-shrink-0">
+                    {matchBoardCount != null && position > matchBoardCount
+                      ? "Αν."
+                      : positionLabel(position, constraintsFor(position), referenceYear)}
+                  </span>
+                  <span className="flex-1 min-w-0 text-sm font-semibold truncate" title={`${a.label} — ${a.sub}`}>
+                    {a.label}
+                  </span>
+                  {status === "ok" && <span className="text-sm font-bold text-okText flex-shrink-0" title="Πληροί τον όρο της σκακιέρας (ενδεικτικά)">✓</span>}
+                  {status === "bad" && <span className="text-sm font-bold text-pendingText flex-shrink-0" title="Δεν πληροί τον όρο αυτής της σκακιέρας">!</span>}
+                  <button
+                    type="button"
+                    onClick={() => move(i, "up")}
+                    disabled={i === 0}
+                    aria-label="Μετακίνηση πάνω"
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md border border-cardBorder bg-card text-sm disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(i, "down")}
+                    disabled={i === athletes.length - 1}
+                    aria-label="Μετακίνηση κάτω"
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md border border-cardBorder bg-card text-sm disabled:opacity-30"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(a.key)}
+                    aria-label={`Αφαίρεση ${a.label}`}
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md text-sm text-red-400 hover:bg-panel"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
-              <button type="button" onClick={() => remove(a.key)} className="text-xs text-red-400 hover:underline">
-                Αφαίρεση
-              </button>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+          <p className="text-xs text-muted">
+            <span className="font-bold text-okText">✓</span> καλύπτει τον όρο · <span className="font-bold text-pendingText">!</span> δεν τον καλύπτει (ενδεικτικός έλεγχος).
+            Τα βελάκια αλλάζουν τη σειρά και τη σκακιέρα κάθε αθλητή.
+          </p>
+        </div>
       )}
 
       {rules && (

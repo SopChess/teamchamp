@@ -5,9 +5,9 @@ import { registerTeam } from "./actions";
 import { searchDirectoryForRegistration, searchDirectoryByNumberForRegistration } from "./directorySearch";
 import { isRegistrationOpen, type TournamentStatus } from "@/lib/competitions/tournamentStatus";
 import { AUDIENCE_FIELD_LABEL, AUDIENCE_FIELD_EXAMPLE, requiresEsoCode, type AudienceType } from "@/lib/teams/teams";
-import SavableForm from "@/components/SavableForm";
 import BackHome from "@/components/BackHome";
-import AthletePicker from "./AthletePicker";
+import RegisterWizard from "./RegisterWizard";
+import { referenceYearOf } from "@/lib/rosterRules/boardNotation";
 import type { RosterRules } from "@/lib/rosterRules/types";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export default async function RegisterPage({ params }: { params: { id: string } 
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, name, audience_type, registration_deadline, status")
+    .select("id, name, audience_type, registration_deadline, status, starts_on")
     .eq("id", params.id)
     .maybeSingle();
   if (!competition) notFound();
@@ -52,65 +52,16 @@ export default async function RegisterPage({ params }: { params: { id: string } 
           Οι εγγραφές για αυτή τη διοργάνωση έχουν κλείσει.
         </div>
       ) : (
-        <SavableForm
+        <RegisterWizard
           action={boundRegister}
-          successMessage="Η εγγραφή καταχωρήθηκε — μεταφορά στο Team Portal σας..."
-          className="flex flex-col gap-4"
-        >
-          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
-            <div className="text-xs uppercase tracking-wide text-muted">{fieldLabel}</div>
-            <input
-              name="new_team_name"
-              required
-              placeholder={fieldExample}
-              className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm uppercase"
-            />
-            {needsEsoCode && (
-              <input
-                name="eso_code"
-                required
-                placeholder="Κωδικός ΕΣΟ του συλλόγου"
-                className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm"
-              />
-            )}
-            <p className="text-xs text-muted">
-              Αν ο σύλλογος/σχολείο έχει ήδη καταχωρηθεί με το ίδιο ακριβώς όνομα, θα αναγνωριστεί
-              αυτόματα — δεν χρειάζεται να ελέγξετε εσείς αν υπάρχει ήδη.
-            </p>
-          </div>
-
-          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
-            <div className="text-xs uppercase tracking-wide text-muted">Στοιχεία Υπευθύνου</div>
-            <div className="flex gap-2">
-              <input name="last_name" required placeholder="Επώνυμο" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1 min-w-0 uppercase" />
-              <input name="first_name" required placeholder="Όνομα" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm flex-1 min-w-0 uppercase" />
-            </div>
-            <input name="phone" required placeholder="Τηλέφωνο" type="tel" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />
-            <input name="email" required placeholder="Email" type="email" className="bg-panel border border-cardBorder rounded-lg px-3 py-2 text-sm" />
-            <p className="text-xs text-muted">
-              Αν είστε ήδη υπεύθυνος άλλης ομάδας με το ίδιο email και τηλέφωνο, θα βλέπετε όλες τις
-              ομάδες σας από το ίδιο Team Portal.
-            </p>
-          </div>
-
-          <div className="bg-card border border-cardBorder rounded-xl p-4 flex flex-col gap-3 transition-colors hover:border-gold/40">
-            <div className="text-xs uppercase tracking-wide text-muted">Αθλητές</div>
-            <AthletePicker
-              search={searchDirectoryForRegistration}
-              searchByNumber={searchDirectoryByNumberForRegistration}
-              rules={rules ?? null}
-            />
-          </div>
-
-          <button type="submit" className="bg-gold text-bg font-semibold rounded-xl py-3 text-sm">
-            Ολοκλήρωση Εγγραφής
-          </button>
-
-          <p className="text-xs text-muted">
-            Θα λάβετε email με τα στοιχεία της διοργάνωσης και σύνδεσμο προς το Team Portal σας.
-            Μπορείτε να επεξεργάζεστε την ομάδα σας μέχρι την προθεσμία εγγραφών.
-          </p>
-        </SavableForm>
+          fieldLabel={fieldLabel}
+          fieldExample={fieldExample}
+          needsEsoCode={needsEsoCode}
+          search={searchDirectoryForRegistration}
+          searchByNumber={searchDirectoryByNumberForRegistration}
+          rules={rules ?? null}
+          referenceYear={referenceYearOf(competition.starts_on)}
+        />
       )}
 
       <p className="text-xs text-muted text-center">
